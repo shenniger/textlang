@@ -1,0 +1,10 @@
+Build
+*.o
+*.Build
+*.exe
+*.gch
+*.user
+*.plist
+*.oar
+*.olf
+*.build
