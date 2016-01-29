@@ -76,17 +76,66 @@ class Parser {
     }
   }
 
-  void parseCommand() {
+  void parseStrFunction() {
     std::string name = parseName('(');
     auto args = parseArgs(')');
-    std::cout << name << "->"; // TODO
+    // TODO
+    /*std::cout << name << "->"; // TODO
     for (auto &e : args) {
       std::cout << e << "|";
     }
-    std::cout << "\n";
+    std::cout << "\n";*/
   }
 
-  void parseAction() {}
+  std::string parseString() {
+    std::string res;
+    for (;;) {
+      if (_c.eof()) {
+        return trim(res);
+      }
+      auto a = _c.next();
+      if (a == '+' || a == '$' || a == '#') {
+        _c.rewind();
+        return trim(res);
+      }
+      if (a == '@') {
+        parseStrFunction();
+        continue;
+      }
+      res += a;
+    }
+  }
+
+  void parseCommand() {
+    std::string name = parseName('(');
+    auto args = parseArgs(')');
+    /*std::cout << name << "->"; // TODO
+    for (auto &e : args) {
+      std::cout << e << "|";
+    }
+    std::cout << "\n";*/
+  }
+
+  void parseAction() {
+    std::string name = parseName('(');
+    auto args = parseArgs(')');
+    std::vector<std::string> args2;
+    if (_c.next() != ':') {
+      args2 = parseArgs(']');
+    }
+    while (_c.last != ':') {
+      if (_c.eof()) {
+        ERROR("Unexpected EOF!");
+      }
+      _c.next();
+    }
+    parseString();
+    /*std::cout << name << "->"; // TODO
+    for (auto &e : args2) {
+      std::cout << e << "|";
+    }
+    std::cout << "\n";*/
+  }
 
   void parseChoiceBox() {}
 

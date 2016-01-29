@@ -59,6 +59,8 @@ public:
       return last = a;
     }
   }
+
+  void rewind() { _it--; }
 };
 
 #if (defined UNITTEST) || (defined COMPLETION)
