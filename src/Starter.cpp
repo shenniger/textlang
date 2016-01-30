@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <iostream>
 #include <fstream>
+#include "Archive.hpp"
 #include "Parser.hpp"
 #include "CodeStream.hpp"
 
@@ -24,12 +25,17 @@ void readAnotherFile(NormalWriter &r, const std::string t) {
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    std::cout << "USAGE: SOURCE_FILE" << std::endl;
+  if (argc != 3) {
+    std::cout << "USAGE: SOURCE_FILE TARGET_FILE" << std::endl;
     exit(1);
   }
 
-  Parser<NormalWriter>::parse(readFile(argv[1]));
+  auto a = Parser<NormalWriter>::parse(readFile(argv[1]))();
+  std::ofstream f(argv[2], std::ios::binary);
+  Archive ar(&f);
+  ar &a;
+  f.close();
+
   return 0;
 }
 
