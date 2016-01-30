@@ -1,7 +1,6 @@
 #ifndef INCLUDED_Parser_hpp
 #define INCLUDED_Parser_hpp
 
-struct TestWriter;
 class NormalWriter;
 
 #include <string>
@@ -16,68 +15,20 @@ class NormalWriter;
 // abbreviation
 using string_vector = std::vector<std::string>;
 
-struct TestWriter {
-  void writeCommand(std::string name, string_vector args) {
-    std::cout << "found command: " << name << ", args: ";
-    for (const auto &e : args) {
-      std::cout << e << "|";
-    }
-    std::cout << std::endl;
-  }
-
-  void writeAction(string_vector objects, std::string verb, string_vector cond,
-                   std::string text,
-                   std::vector<std::pair<std::string, string_vector>> cmd) {
-    std::cout << "found action: " << verb << " for ";
-    for (const auto &e : objects) {
-      std::cout << e << "|";
-    }
-    std::cout << ", under conditions ";
-    for (const auto &e : cond) {
-      std::cout << e << "|";
-    }
-    std::cout << ", text: " << text << " function calls: ";
-    for (const auto &e : cmd) {
-      std::cout << "call to " << e.first << "[";
-      for (const auto &e : e.second) {
-        std::cout << e << "|";
-      }
-      std::cout << "] ";
-    }
-    std::cout << std::endl;
-  }
-
-  void writeChoiceBox(
-      std::string name,
-      std::vector<std::pair<
-          std::string,
-          std::pair<std::string,
-                    std::vector<std::pair<std::string, string_vector>>>>>
-          entries) {
-    std::cout << "found choice box " << name << ", entries: ";
-    for (auto &e : entries) {
-      std::cout << "showname: " << e.first << "; text: " << e.second.first
-                << "; function calls: ";
-      for (const auto &e : e.second.second) {
-        std::cout << "call to " << e.first << "[";
-        for (const auto &e : e.second) {
-          std::cout << e << "|";
-        }
-        std::cout << "] ";
-      }
-
-      std::cout << "@ ";
-    }
-    std::cout << std::endl;
-  }
-};
-
 void readAnotherFile(NormalWriter &r, const std::string t); // from Starter.cpp
+
+struct ParsedChoiceBoxEntry {
+  std::string Choice;
+  std::string Text;
+  string_vector Cond;
+  std::vector<std::pair<std::string, string_vector>> Cmds;
+};
 
 class NormalWriter {
   TextAdventure _ta;
   string_vector _verbs;
   string_vector _nouns;
+  string_vector _choiceboxes;
 
 public:
   void writeCommand(std::string name, string_vector args) {
@@ -132,17 +83,144 @@ public:
     }
   }
 
-  void writeAction(string_vector objects, std::string verb, string_vector cond,
-                   std::string text,
-                   std::vector<std::pair<std::string, string_vector>> cmd) {}
+  Command writeActionCmd(std::string s, string_vector args) {
+    if (s == "get" || s == "set") {
+      if (args.size() != 1) {
+        ERROR("get/set: Expected exactly 1 argument.");
+      }
+      auto r = find(_nouns, args[0]);
+      if (r == notFound) {
+        ERROR("get/set: Couldn't find " << args[0] << "!");
+      }
+      return {Command::get, static_cast<ID>(r), 0};
+    } else if (s == "lose" || s == "unset") {
+      if (args.size() != 1) {
+        ERROR("lose/unset: Expected exactly 1 argument.");
+      }
+      auto r = find(_nouns, args[0]);
+      if (r == notFound) {
+        ERROR("lose/unset: Couldn't find " << args[0] << "!");
+      }
+      return {Command::lose, static_cast<ID>(r), 0};
+    } else if (s == "choicebox") {
+      if (args.size() != 1) {
+        ERROR("choicebox: Expected exactly 1 argument.");
+      }
+      auto r = find(_choiceboxes, args[0]);
+      if (r == notFound) {
+        ERROR("choicebox: Couldn't find " << args[0] << "!");
+      }
+      return {Command::choicebox, static_cast<ID>(r), 0};
+    } else if (s == "leave") {
+      if (args.size() != 0) {
+        ERROR("leave: Expected exactly 0 arguments.");
+      }
+      return {Command::leave, 0, 0};
+    } else if (s == "go") {
+      if (args.size() != 1) {
+        ERROR("go: Expected exactly 1 argument.");
+      }
+      auto r = find(_nouns, args[0]);
+      if (r == notFound) {
+        ERROR("go: Couldn't find " << args[0] << "!");
+      }
+      return {Command::go, static_cast<ID>(r), 0};
+    }
+    ERROR("Couldn't find action command: " << s << "!");
+  }
 
-  void writeChoiceBox(
-      std::string name,
-      std::vector<std::pair<
-          std::string,
-          std::pair<std::string,
-                    std::vector<std::pair<std::string, string_vector>>>>>
-          entries) {}
+  void writeAction(string_vector objects_, std::string verb_,
+                   string_vector cond_, std::string text,
+                   std::vector<std::pair<std::string, string_vector>> cmds_) {
+    const auto func = [this](auto a) {
+      auto r = find(_nouns, a);
+      if (r == notFound) {
+        ERROR("go: Couldn't find " << a << "!");
+      }
+      return r;
+    };
+
+    // Selector
+    auto objects = map<ID>(objects_, func);
+    ID verb = func(verb_);
+    uint16_t i = 1;
+    std::vector<Condition> cond;
+    for (const auto &e : cond_) {
+      if (e.size()) {
+        if (e[0] >= '0' && e[0] <= '9') {
+          i = std::stoi(e);
+        } else {
+          Condition res;
+          if (e[0] == '!') {
+            res.expectedValue = false;
+            res.var = func(e.substr(1));
+          } else {
+            res.expectedValue = true;
+            res.var = func(e);
+          }
+          cond.push_back(res);
+        }
+      }
+    }
+    ActionSelector sel = {verb, objects, i, cond};
+
+    // text is already there
+
+    // Commands
+    auto cmds = map<Command>(cmds_, [this](auto a) {
+      return this->writeActionCmd(a.first, a.second);
+    });
+
+    _ta.Actions.push_back({sel, text, cmds});
+  }
+
+  Choice writeChoice(ParsedChoiceBoxEntry entry) {
+    const auto func = [this](auto a) {
+      auto r = find(_nouns, a);
+      if (r == notFound) {
+        ERROR("go: Couldn't find " << a << "!");
+      }
+      return r;
+    };
+
+    // I, Conditions
+    uint16_t i = 1;
+    std::vector<Condition> cond;
+    for (const auto &e : entry.Cond) {
+      if (e.size()) {
+        if (e[0] >= '0' && e[0] <= '9') {
+          i = std::stoi(e);
+        } else {
+          Condition res;
+          if (e[0] == '!') {
+            res.expectedValue = false;
+            res.var = func(e.substr(1));
+          } else {
+            res.expectedValue = true;
+            res.var = func(e);
+          }
+          cond.push_back(res);
+        }
+      }
+    }
+
+    // Choice, Text already there
+
+    // Commands
+    auto cmds = map<Command>(entry.Cmds, [this](auto a) {
+      return this->writeActionCmd(a.first, a.second);
+    });
+
+    return {i, cond, entry.Choice, entry.Text, cmds};
+  }
+
+  void writeChoiceBox(std::string name,
+                      std::vector<ParsedChoiceBoxEntry> entries) {
+    auto choices =
+        map<Choice>(entries, [this](auto a) { return this->writeChoice(a); });
+    _ta.ChoiceBoxes.push_back({choices});
+    _choiceboxes.push_back(name);
+  }
 
   TextAdventure operator()() { return _ta; }
 };
@@ -309,10 +387,7 @@ template <class TWriter> class Parser {
 
   void parseChoiceBox() {
     auto name = parseName(':');
-    std::vector<std::pair<
-        std::string,
-        std::pair<std::string,
-                  std::vector<std::pair<std::string, string_vector>>>>> entries;
+    std::vector<ParsedChoiceBoxEntry> entries;
     for (;;) {
       while (_c.last != '*') {
         if (_c.eof()) {
@@ -327,7 +402,7 @@ template <class TWriter> class Parser {
       }
       auto entry = parseCBEntry();
       auto str = parseString();
-      entries.push_back({entry, str});
+      entries.push_back({entry, str.first, args, str.second});
       auto a = _c.next();
       if (a == '$' || a == '+' || a == '#') {
         _c.rewind();
@@ -377,15 +452,15 @@ public:
 
 #if (defined UNITTEST) || (defined COMPLETION)
 DEF_UNITTEST(Parser) {
-  TestWriter a;
-  Parser<TestWriter>(R"(
+  NormalWriter a;
+  Parser<NormalWriter>(R"(
 
 \ unittest \
 
 +test(1, 2, 3, "fnb")
 
 )",
-                     a)();
+                       a)();
 }
 END_UNITTEST
 #endif

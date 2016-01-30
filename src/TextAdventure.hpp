@@ -8,6 +8,8 @@ struct Condition;
 struct ActionSelector;
 struct Command;
 struct Action;
+struct Choice;
+struct ChoiceBox;
 struct TextAdventure;
 
 #include <stdint.h>
@@ -43,7 +45,13 @@ struct ActionSelector {
 };
 
 struct Command {
-  enum Type : uint8_t {};
+  enum Type : uint8_t {
+    get,       // get Item, same as set
+    lose,      // lose Item, same as unset
+    choicebox, // enter choice box
+    leave,     // leave choice box
+    go         // change location
+  };
   Type T;
   ID Arg1, Arg2;
 };
@@ -54,10 +62,25 @@ struct Action {
   std::vector<Command> Commands;
 };
 
+struct Choice {
+  uint16_t I;
+  std::vector<Condition> Conditions;
+
+  std::string Choice;
+  std::string Text;
+
+  std::vector<Command> Commands;
+};
+
+struct ChoiceBox {
+  std::vector<Choice> C;
+};
+
 struct TextAdventure {
   std::vector<Verb> Verbs;
   std::vector<Noun> Nouns;
   std::vector<Action> Actions;
+  std::vector<ChoiceBox> ChoiceBoxes;
 };
 
 #endif
