@@ -1,9 +1,13 @@
 #ifndef INCLUDED_Parser_hpp
 #define INCLUDED_Parser_hpp
 
+struct TestWriter;
+class NormalWriter;
+
 #include <string>
 #include <vector>
 #include <utility>
+#include "Algorithms.hpp"
 #include "Error.hpp"
 #include "TextAdventure.hpp"
 #include "CodeStream.hpp"
@@ -68,9 +72,84 @@ struct TestWriter {
   }
 };
 
+void readAnotherFile(NormalWriter &r, const std::string t); // from Starter.cpp
+
+class NormalWriter {
+  TextAdventure _ta;
+  string_vector _verbs;
+  string_vector _nouns;
+
+public:
+  void writeCommand(std::string name, string_vector args) {
+    if (name == "inc") {
+      if (args.size() != 1) {
+        ERROR("inc: Expected exactly 1 argument.");
+      }
+      readAnotherFile(*this, args[0]);
+    } else if (name == "verb") {
+      if (args.size() != 3) {
+        ERROR("verb: Expected exactly 3 arguments.");
+      }
+      auto r = find(_verbs, args[1]);
+      // TODO: Maybe don't trust the user in giving correct ArgCounts
+      if (r == notFound) {
+        _verbs.push_back(args[1]);
+        _ta.Verbs.push_back(
+            {{args[0]}, static_cast<int8_t>(std::stoi(args[2]))});
+      } else {
+        _ta.Verbs.at(r).Regexes.push_back(args[1]);
+      }
+    } else if (name == "inventory") {
+      if (args.size() != 2) {
+        ERROR("inventory: Expected exactly 2 arguments.");
+      }
+      _nouns.push_back(args[1]);
+      _ta.Nouns.push_back({Noun::InventoryItem, -1, args[0]});
+    } else if (name == "var") {
+      if (args.size() != 1) {
+        ERROR("var: Expected exactly 1 argument.");
+      }
+      _nouns.push_back(args[0]);
+      _ta.Nouns.push_back({Noun::Variable, -1, std::string()});
+    } else if (name == "room") {
+      if (args.size() != 2) {
+        ERROR("room: Expected exactly 2 arguments.");
+      }
+      _nouns.push_back(args[1]);
+      _ta.Nouns.push_back({Noun::Room, -1, args[0]});
+    } else if (name == "object") {
+      if (args.size() != 3) {
+        ERROR("object: Expected exactly 2 arguments.");
+      }
+      auto r = find(_nouns, args[0]);
+      if (r == notFound) {
+        ERROR("object: Room couldn't be found: " << args[0] << "!");
+      }
+      _nouns.push_back(args[2]);
+      _ta.Nouns.push_back({Noun::RoomItem, static_cast<ID>(r), args[1]});
+    } else {
+      ERROR("Unknown Command: " << name);
+    }
+  }
+
+  void writeAction(string_vector objects, std::string verb, string_vector cond,
+                   std::string text,
+                   std::vector<std::pair<std::string, string_vector>> cmd) {}
+
+  void writeChoiceBox(
+      std::string name,
+      std::vector<std::pair<
+          std::string,
+          std::pair<std::string,
+                    std::vector<std::pair<std::string, string_vector>>>>>
+          entries) {}
+
+  TextAdventure operator()() { return _ta; }
+};
+
 template <class TWriter> class Parser {
   CodeStream _c;
-  TWriter _w;
+  TWriter &_w;
 
   std::string trimBegin(const std::string &a) {
     if (a.size()) {
@@ -282,24 +361,31 @@ template <class TWriter> class Parser {
   }
 
 public:
-  Parser(std::string s) : _c(s) {}
+  Parser(std::string s, TWriter &t) : _c(s), _w(t) {}
 
-  void /* TODO */ operator()() {
+  void operator()() {
     while (!_c.eof()) {
       parseHighLevel();
     }
+  }
+
+  static void /* TODO */ parse(const std::string t) {
+    TWriter a;
+    Parser<TWriter> p(t, a);
   }
 };
 
 #if (defined UNITTEST) || (defined COMPLETION)
 DEF_UNITTEST(Parser) {
+  TestWriter a;
   Parser<TestWriter>(R"(
 
 \ unittest \
 
 +test(1, 2, 3, "fnb")
 
-)")();
+)",
+                     a)();
 }
 END_UNITTEST
 #endif
