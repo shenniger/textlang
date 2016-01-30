@@ -3,13 +3,74 @@
 
 #include <string>
 #include <vector>
+#include <utility>
 #include "Error.hpp"
 #include "TextAdventure.hpp"
 #include "CodeStream.hpp"
 #include "Unittest.hpp"
 
-class Parser {
+// abbreviation
+using string_vector = std::vector<std::string>;
+
+struct TestWriter {
+  void writeCommand(std::string name, string_vector args) {
+    std::cout << "found command: " << name << ", args: ";
+    for (const auto &e : args) {
+      std::cout << e << "|";
+    }
+    std::cout << std::endl;
+  }
+
+  void writeAction(string_vector objects, std::string verb, string_vector cond,
+                   std::string text,
+                   std::vector<std::pair<std::string, string_vector>> cmd) {
+    std::cout << "found action: " << verb << " for ";
+    for (const auto &e : objects) {
+      std::cout << e << "|";
+    }
+    std::cout << ", under conditions ";
+    for (const auto &e : cond) {
+      std::cout << e << "|";
+    }
+    std::cout << ", text: " << text << " function calls: ";
+    for (const auto &e : cmd) {
+      std::cout << "call to " << e.first << "[";
+      for (const auto &e : e.second) {
+        std::cout << e << "|";
+      }
+      std::cout << "] ";
+    }
+    std::cout << std::endl;
+  }
+
+  void writeChoiceBox(
+      std::string name,
+      std::vector<std::pair<
+          std::string,
+          std::pair<std::string,
+                    std::vector<std::pair<std::string, string_vector>>>>>
+          entries) {
+    std::cout << "found choice box " << name << ", entries: ";
+    for (auto &e : entries) {
+      std::cout << "showname: " << e.first << "; text: " << e.second.first
+                << "; function calls: ";
+      for (const auto &e : e.second.second) {
+        std::cout << "call to " << e.first << "[";
+        for (const auto &e : e.second) {
+          std::cout << e << "|";
+        }
+        std::cout << "] ";
+      }
+
+      std::cout << "@ ";
+    }
+    std::cout << std::endl;
+  }
+};
+
+template <class TWriter> class Parser {
   CodeStream _c;
+  TWriter _w;
 
   std::string trimBegin(const std::string &a) {
     if (a.size()) {
@@ -61,8 +122,8 @@ class Parser {
     }
   }
 
-  std::vector<std::string> parseArgs(char end) {
-    std::vector<std::string> res;
+  string_vector parseArgs(char end) {
+    string_vector res;
     for (;;) {
       if (_c.eof()) {
         ERROR("Unexpected EOF!");
@@ -76,48 +137,35 @@ class Parser {
     }
   }
 
-  void parseStrFunction() {
+  std::pair<std::string, string_vector> parseStrFunction() {
     std::string name = parseName('(');
     auto args = parseArgs(')');
-    // TODO
-    /*std::cout << name << "->"; // TODO
-    for (auto &e : args) {
-      std::cout << e << "|";
-    }
-    std::cout << "\n";*/
+    return {name, args};
   }
 
-  std::string parseString() {
+  std::pair<std::string, std::vector<std::pair<std::string, string_vector>>>
+  parseString() {
+    std::vector<std::pair<std::string, string_vector>> func;
     std::string res;
     for (;;) {
       if (_c.eof()) {
-        return trim(res);
+        return {trim(res), func};
       }
       auto a = _c.next();
       if (a == '+' || a == '$' || a == '#' || a == '*') {
         _c.rewind();
-        return trim(res);
+        return {trim(res), func};
       }
       if (a == '@') {
-        parseStrFunction();
+        func.push_back(parseStrFunction());
         continue;
       }
       res += a;
     }
   }
 
-  void parseCommand() {
-    std::string name = parseName('(');
-    auto args = parseArgs(')');
-    /*std::cout << name << "->"; // TODO
-    for (auto &e : args) {
-      std::cout << e << "|";
-    }
-    std::cout << "\n";*/
-  }
-
-  std::vector<std::string> parseNames(char begin) {
-    std::vector<std::string> res;
+  string_vector parseNames(char begin) {
+    string_vector res;
     std::string s;
     for (;;) {
       if (_c.eof()) {
@@ -140,26 +188,6 @@ class Parser {
     }
   }
 
-  void parseAction() {
-    auto names = parseNames('(');
-    auto args = parseArgs(')');
-    std::vector<std::string> args2;
-    if (_c.next() != ':') {
-      args2 = parseArgs(']');
-    }
-    while (_c.last != ':') {
-      if (_c.eof()) {
-        ERROR("Unexpected EOF!");
-      }
-      _c.next();
-    }
-    parseString();
-    /*for (auto & : names) {
-      // std::cout << e << "|";
-  }*/
-    // std::cout << "\n";
-  }
-
   std::string parseCBEntry() {
     std::string res;
     for (;;) {
@@ -174,8 +202,38 @@ class Parser {
     }
   }
 
+  void parseCommand() {
+    std::string name = parseName('(');
+    auto args = parseArgs(')');
+    _w.writeCommand(name, args);
+  }
+
+  void parseAction() {
+    auto names = parseNames('(');
+    auto args = parseArgs(')');
+    if (args.size() != 1) {
+      ERROR("Expected EXACTLY one verb, found " << args.size());
+    }
+    string_vector args2;
+    if (_c.next() != ':') {
+      args2 = parseArgs(']');
+    }
+    while (_c.last != ':') {
+      if (_c.eof()) {
+        ERROR("Unexpected EOF!");
+      }
+      _c.next();
+    }
+    auto text = parseString();
+    _w.writeAction(names, args[0], args2, text.first, text.second);
+  }
+
   void parseChoiceBox() {
     auto name = parseName(':');
+    std::vector<std::pair<
+        std::string,
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, string_vector>>>>> entries;
     for (;;) {
       while (_c.last != '*') {
         if (_c.eof()) {
@@ -183,17 +241,18 @@ class Parser {
         }
         _c.next();
       }
-      std::vector<std::string> args;
+      string_vector args;
       if (_c.next() != ':') {
         args = parseArgs(']');
         _c.next(); // jump over
       }
       auto entry = parseCBEntry();
       auto str = parseString();
+      entries.push_back({entry, str});
       auto a = _c.next();
-      std::cout << entry << "|" << str << std::endl;
       if (a == '$' || a == '+' || a == '#') {
         _c.rewind();
+        _w.writeChoiceBox(name, entries);
         return;
       }
     }
@@ -234,7 +293,7 @@ public:
 
 #if (defined UNITTEST) || (defined COMPLETION)
 DEF_UNITTEST(Parser) {
-  Parser(R"(
+  Parser<TestWriter>(R"(
 
 \ unittest \
 

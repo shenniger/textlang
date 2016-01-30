@@ -24,10 +24,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  Parser(readFile(argv[1]))();
-  /*CodeStream a(readFile(argv[1]));
-  while (!a.eof())
-    std::cout << a.next();*/
+  Parser<TestWriter>(readFile(argv[1]))();
   return 0;
 }
 
