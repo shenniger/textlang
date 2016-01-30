@@ -1,5 +1,6 @@
 #ifndef UNITTEST
 
+#include <stddef.h>
 #include <iostream>
 #include <fstream>
 #include "Parser.hpp"
@@ -9,13 +10,12 @@ std::string readFile(std::string name) {
   std::ifstream stream(name, std::ios::in | std::ios::binary);
   stream.seekg(0, std::ios::end);
   std::string res;
-  res.reserve(stream.tellg());
+  size_t len = stream.tellg();
+  res.resize(len);
   stream.seekg(0, std::ios::beg);
-  while (!stream.eof()) {
-    res += stream.get();
-  }
+  stream.read(&res[0], len);
   stream.close();
-  return res.substr(0, res.length() - 1);
+  return res;
 }
 
 int main(int argc, char *argv[]) {

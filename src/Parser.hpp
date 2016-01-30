@@ -94,7 +94,7 @@ class Parser {
         return trim(res);
       }
       auto a = _c.next();
-      if (a == '+' || a == '$' || a == '#') {
+      if (a == '+' || a == '$' || a == '#' || a == '*') {
         _c.rewind();
         return trim(res);
       }
@@ -116,8 +116,32 @@ class Parser {
     std::cout << "\n";*/
   }
 
+  std::vector<std::string> parseNames(char begin) {
+    std::vector<std::string> res;
+    std::string s;
+    for (;;) {
+      if (_c.eof()) {
+        ERROR("Unexpected EOF!");
+      }
+      char a = _c.next();
+      if (a == ' ') {
+        ERROR("Unexpected whitespace!");
+      }
+      if (a == '-') {
+        res.push_back(s);
+        s = "";
+        continue;
+      }
+      if (a == begin) {
+        res.push_back(s);
+        return res;
+      }
+      s += a;
+    }
+  }
+
   void parseAction() {
-    std::string name = parseName('(');
+    auto names = parseNames('(');
     auto args = parseArgs(')');
     std::vector<std::string> args2;
     if (_c.next() != ':') {
@@ -130,14 +154,50 @@ class Parser {
       _c.next();
     }
     parseString();
-    /*std::cout << name << "->"; // TODO
-    for (auto &e : args2) {
-      std::cout << e << "|";
-    }
-    std::cout << "\n";*/
+    /*for (auto & : names) {
+      // std::cout << e << "|";
+  }*/
+    // std::cout << "\n";
   }
 
-  void parseChoiceBox() {}
+  std::string parseCBEntry() {
+    std::string res;
+    for (;;) {
+      if (_c.eof()) {
+        return trim(res);
+      }
+      auto a = _c.next();
+      if (a == '|') {
+        return trim(res);
+      }
+      res += a;
+    }
+  }
+
+  void parseChoiceBox() {
+    auto name = parseName(':');
+    for (;;) {
+      while (_c.last != '*') {
+        if (_c.eof()) {
+          ERROR("Unexpected EOF!");
+        }
+        _c.next();
+      }
+      std::vector<std::string> args;
+      if (_c.next() != ':') {
+        args = parseArgs(']');
+        _c.next(); // jump over
+      }
+      auto entry = parseCBEntry();
+      auto str = parseString();
+      auto a = _c.next();
+      std::cout << entry << "|" << str << std::endl;
+      if (a == '$' || a == '+' || a == '#') {
+        _c.rewind();
+        return;
+      }
+    }
+  }
 
   void parseHighLevel() {
     char cmdType = _c.next();
@@ -157,6 +217,8 @@ class Parser {
     case '#':
       parseChoiceBox();
       break;
+    default:
+      ERROR("Unexpected character: " << cmdType);
     }
   }
 
