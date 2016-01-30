@@ -31,6 +31,12 @@ class NormalWriter {
   string_vector _choiceboxes;
 
 public:
+  NormalWriter() {
+    // creating pseudo verbs
+    _ta.Verbs = {{{}, 0}, {{}, 0}};
+    _verbs = {"_inv", "_intro"};
+  }
+
   void writeCommand(std::string name, string_vector args) {
     if (name == "inc") {
       if (args.size() != 1) {
@@ -125,6 +131,11 @@ public:
         ERROR("go: Couldn't find " << args[0] << "!");
       }
       return {Command::go, static_cast<ID>(r), 0};
+    } else if (s == "end") {
+      if (args.size() != 0) {
+        ERROR("object: Expected exactly 0 arguments.");
+      }
+      return {Command::end, 0, 0};
     }
     ERROR("Couldn't find action command: " << s << "!");
   }
@@ -135,14 +146,18 @@ public:
     const auto func = [this](auto a) {
       auto r = find(_nouns, a);
       if (r == notFound) {
-        ERROR("go: Couldn't find " << a << "!");
+        ERROR("Couldn't find " << a << "!");
       }
       return r;
     };
 
     // Selector
     auto objects = map<ID>(objects_, func);
-    ID verb = func(verb_);
+    auto v = find(_verbs, verb_);
+    if (v == notFound) {
+      ERROR("Couldn't find verb " << verb_ << "!");
+    }
+    ID verb = v;
     uint16_t i = 1;
     std::vector<Condition> cond;
     for (const auto &e : cond_) {
@@ -178,7 +193,7 @@ public:
     const auto func = [this](auto a) {
       auto r = find(_nouns, a);
       if (r == notFound) {
-        ERROR("go: Couldn't find " << a << "!");
+        ERROR("Couldn't find " << a << "!");
       }
       return r;
     };
@@ -444,9 +459,11 @@ public:
     }
   }
 
-  static void /* TODO */ parse(const std::string t) {
+  static TWriter parse(const std::string t) {
     TWriter a;
     Parser<TWriter> p(t, a);
+    p();
+    return a;
   }
 };
 
