@@ -5,15 +5,28 @@
 
 mkdir -p Build
 
-for i in $(tree src -fi -P "*.cpp" --noreport)
+for i in $(tree Compiler -fi -P "*.cpp" --noreport)
 do
 	if [[ -f $i ]]
 	then
 		mkdir -p `dirname Build/$i`
-		$@ -c -Isrc -std=c++14 -Wall -Wextra -pedantic $i -o Build/$i.obj -fno-rtti -fvisibility=hidden &
+		$@ -c -IGeneral -std=c++14 -Wall -Wextra -pedantic $i -o Build/$i.obj -fno-rtti -fvisibility=hidden &
 		files="$files Build/$i.obj"
 	fi
 done
 
 wait
 $@ $files -o Build/TextLangCompiler.build
+
+for i in $(tree Player -fi -P "*.cpp" --noreport)
+do
+	if [[ -f $i ]]
+	then
+		mkdir -p `dirname Build/$i`
+		$@ -c -IGeneral -std=c++14 -Wall -Wextra -pedantic $i -o Build/$i.obj -fno-rtti -fvisibility=hidden &
+		files2="$files2 Build/$i.obj"
+	fi
+done
+
+wait
+$@ $files2 -o Build/TextLangPlayer.build
