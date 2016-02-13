@@ -18,8 +18,8 @@ template <class T> size_t find(const std::vector<T> &a, T t) {
   return -1;
 }
 
-template <class TOut, class TIn, class TFunc>
-std::vector<TOut> map(std::vector<TIn> in, TFunc func) {
+template <class TOut, class TInContainer, class TFunc>
+std::vector<TOut> map(TInContainer in, TFunc func) {
   std::vector<TOut> res;
   res.reserve(in.size());
   for (const auto &e : in) {

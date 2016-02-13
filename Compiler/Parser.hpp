@@ -6,6 +6,7 @@ class NormalWriter;
 #include <string>
 #include <vector>
 #include <utility>
+#include <algorithm>
 #include <Algorithms.hpp>
 #include <Error.hpp>
 #include <TextAdventure.hpp>
@@ -32,8 +33,23 @@ class NormalWriter {
 public:
   NormalWriter() {
     // creating pseudo verbs
-    _ta.Verbs = {{{}, 0}, {{}, 0}};
-    _verbs = {"_inv", "_intro"};
+    _ta.Verbs = {{{}, 0}, {{}, 0}, {{}, 0}};
+    _verbs = {"_inv", "_intro", "_unk"};
+    _ta.Nouns = {{Noun::RoomItem, -1, "", {}}};
+    _nouns = {"_unk"};
+  }
+
+  std::string replaceAll(const std::string &haystack, const std::string &needle,
+                         const std::string &to) {
+    if (haystack.empty())
+      return haystack;
+    std::string res{haystack};
+    size_t pos = 0;
+    while ((pos = res.find(needle, pos)) != std::string::npos) {
+      res.replace(pos, needle.length(), to);
+      pos += to.length();
+    }
+    return res;
   }
 
   void writeCommand(std::string name, string_vector args) {
@@ -50,29 +66,29 @@ public:
       // TODO: Maybe don't trust the user in giving correct ArgCounts
       if (r == notFound) {
         _verbs.push_back(args[1]);
-        _ta.Verbs.push_back(
-            {{args[0]}, static_cast<int8_t>(std::stoi(args[2]))});
+        _ta.Verbs.push_back({{replaceAll(args[0], "&", "(.*)")},
+                             static_cast<int8_t>(std::stoi(args[2]))});
       } else {
-        _ta.Verbs.at(r).Regexes.push_back(args[1]);
+        _ta.Verbs.at(r).Regexes.push_back(replaceAll(args[0], "&", "(.*)"));
       }
     } else if (name == "inventory") {
       if (args.size() != 2) {
         ERROR("inventory: Expected exactly 2 arguments.");
       }
       _nouns.push_back(args[1]);
-      _ta.Nouns.push_back({Noun::InventoryItem, -1, args[0]});
+      _ta.Nouns.push_back({Noun::InventoryItem, -1, args[0], {}});
     } else if (name == "var") {
       if (args.size() != 1) {
         ERROR("var: Expected exactly 1 argument.");
       }
       _nouns.push_back(args[0]);
-      _ta.Nouns.push_back({Noun::Variable, -1, std::string()});
+      _ta.Nouns.push_back({Noun::Variable, -1, std::string(), {}});
     } else if (name == "room") {
       if (args.size() != 2) {
         ERROR("room: Expected exactly 2 arguments.");
       }
       _nouns.push_back(args[1]);
-      _ta.Nouns.push_back({Noun::Room, -1, args[0]});
+      _ta.Nouns.push_back({Noun::Room, -1, args[0], {}});
     } else if (name == "object") {
       if (args.size() != 3) {
         ERROR("object: Expected exactly 2 arguments.");
@@ -82,7 +98,22 @@ public:
         ERROR("object: Room couldn't be found: " << args[0] << "!");
       }
       _nouns.push_back(args[2]);
-      _ta.Nouns.push_back({Noun::RoomItem, static_cast<ID>(r), args[1]});
+      _ta.Nouns.push_back({Noun::RoomItem, static_cast<ID>(r), args[1], {}});
+    } else if (name == "noun") {
+      if (args.size() != 2) {
+        ERROR("noun: Expected exactly 2 arguments.");
+      }
+      _nouns.push_back(args[1]);
+      _ta.Nouns.push_back({Noun::RoomItem, -1, args[0], {}});
+    } else if (name == "alias") {
+      if (args.size() != 2) {
+        ERROR("alias: Expected exactly 2 arguments.");
+      }
+      auto r = find(_nouns, args[0]);
+      if (r == notFound) {
+        ERROR("alias: Noun couldn't be found: " << args[0] << "!");
+      }
+      _ta.Nouns.at(r).Aliases.push_back(args[1]);
     } else {
       ERROR("Unknown Command: " << name);
     }
@@ -152,6 +183,7 @@ public:
 
     // Selector
     auto objects = map<ID>(objects_, func);
+    std::sort(objects.begin(), objects.end());
     auto v = find(_verbs, verb_);
     if (v == notFound) {
       ERROR("Couldn't find verb " << verb_ << "!");
@@ -198,12 +230,11 @@ public:
     };
 
     // I, Conditions
-    uint16_t i = 1;
     std::vector<Condition> cond;
     for (const auto &e : entry.Cond) {
       if (e.size()) {
         if (e[0] >= '0' && e[0] <= '9') {
-          i = std::stoi(e);
+          ERROR("i not supported in ChoiceBoxes!");
         } else {
           Condition res;
           if (e[0] == '!') {
@@ -225,7 +256,7 @@ public:
       return this->writeActionCmd(a.first, a.second);
     });
 
-    return {i, cond, entry.Choice, entry.Text, cmds};
+    return {cond, entry.Choice, entry.Text, cmds};
   }
 
   void writeChoiceBox(std::string name,
@@ -347,12 +378,12 @@ template <class TWriter> class Parser {
         ERROR("Unexpected whitespace!");
       }
       if (a == '-') {
-        res.push_back(s);
         s = "";
         continue;
       }
       if (a == begin) {
-        res.push_back(s);
+        if (!s.empty())
+          res.push_back(s);
         return res;
       }
       s += a;

@@ -15,6 +15,7 @@ struct TextAdventure;
 #include <stdint.h>
 #include <stddef.h>
 #include <string>
+#include <algorithm>
 #include <vector>
 #include <utility>
 #include "Serialization.hpp"
@@ -33,13 +34,22 @@ struct Noun {
   Type T;
   ID InRoom;         // -1 if non-room dependant
   std::string Title; // not neccessary if Type==Variable
+  std::vector<std::string> Aliases;
 
-  SERIALIZE(&T &InRoom &Title)
+  SERIALIZE(&T &InRoom &Title &Aliases)
 };
 
 struct Condition {
   bool expectedValue;
   ID var;
+
+  bool operator==(const Condition &rhs) const {
+    return expectedValue == rhs.expectedValue && var == rhs.var;
+  }
+
+  bool matches(const std::vector<bool> &c) const {
+    return c.at(var) == expectedValue;
+  }
 
   SERIALIZE(&expectedValue &var)
 };
@@ -49,6 +59,25 @@ struct ActionSelector {
   std::vector<ID> Nouns;
   uint16_t I;
   std::vector<Condition> Conditions;
+
+  // does NOT respect I!
+  bool operator==(const ActionSelector &rhs) const {
+    return Verb == rhs.Verb && Nouns == rhs.Nouns &&
+           Conditions == rhs.Conditions;
+  }
+
+  bool matches(const ID v, const std::vector<ID> n,
+               const std::vector<bool> &c) const {
+    std::vector<bool> a(c);
+    std::sort(a.begin(), a.end());
+    if (!(v == Verb && Nouns == n))
+      return false;
+    for (auto e : Conditions) {
+      if (!e.matches(c))
+        return false;
+    }
+    return true;
+  }
 
   SERIALIZE(&Verb &Nouns &I &Conditions)
 };
@@ -77,7 +106,6 @@ struct Action {
 };
 
 struct Choice {
-  uint16_t I;
   std::vector<Condition> Conditions;
 
   std::string Choice;
