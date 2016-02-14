@@ -226,7 +226,7 @@ public:
       return this->writeActionCmd(line, a.first, a.second);
     });
 
-    _ta.Actions.push_back({sel, text, cmds});
+    _ta.Actions.push_back({sel, replaceAll(text, "//n", "\n"), cmds});
   }
 
   Choice writeChoice(int line, ParsedChoiceBoxEntry entry) {
@@ -265,7 +265,7 @@ public:
       return this->writeActionCmd(line, a.first, a.second);
     });
 
-    return {cond, entry.Choice, entry.Text, cmds};
+    return {cond, entry.Choice, replaceAll(entry.Text, "//n", "\n"), cmds};
   }
 
   void writeChoiceBox(int line, std::string name,

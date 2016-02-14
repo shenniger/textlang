@@ -15,11 +15,14 @@ class TextEngine {
 public:
   struct Answer {
     std::string Text;
+    bool Ends = false;
+    ID ChoiceBoxIndex = -1;
+    std::vector<std::pair<std::string, ID>> Choices;
   };
 
 private:
   TextAdventure _ta;
-  const std::vector<std::vector<std::regex>> _verbs;
+  std::vector<std::vector<std::regex>> _verbs;
   std::vector<uint16_t> _actI;
   std::vector<bool> _nounVals;
   ID Room;
@@ -69,6 +72,23 @@ private:
     return {-1, {}};
   }
 
+  std::vector<std::pair<std::string, ID>> doChoiceBox(const ID num) {
+    std::vector<std::pair<std::string, ID>> res;
+    ID i = 0;
+    for (const auto &e : _ta.ChoiceBoxes.at(num).C) {
+      bool viable = true;
+      for (const auto &eCond : e.Conditions) {
+        if (!eCond.matches(_nounVals))
+          viable = false;
+      }
+      if (viable) {
+        res.push_back({e.Choice, i});
+      }
+      i++;
+    }
+    return res;
+  }
+
   void doCommand(const Command cmd, Answer &ans) {
     switch (cmd.T) {
     case Command::get:
@@ -93,15 +113,20 @@ private:
       }
       break;
     case Command::choicebox:
+      ans.ChoiceBoxIndex = cmd.Arg1;
+      ans.Choices = doChoiceBox(cmd.Arg1);
       break;
     case Command::leave:
+      // ignoring leave here, handled below
       break;
     case Command::end:
+      ans.Ends = true;
       break;
     }
   }
 
 public:
+  TextEngine() = default;
   TextEngine(const TextAdventure ta)
       : _ta(ta), _verbs(map<std::vector<std::regex>>(
                      _ta.Verbs,
@@ -177,6 +202,23 @@ public:
     for (auto e : action.Commands)
       doCommand(e, ans);
 
+    return ans;
+  }
+
+  Answer choiceBoxQuery(const ID ChoiceBox, const ID Option) {
+    auto entry = _ta.ChoiceBoxes.at(ChoiceBox).C.at(Option);
+    Answer ans;
+    ans.ChoiceBoxIndex = ChoiceBox;
+    for (const auto &e : entry.Commands) {
+      if (e.T == Command::leave) {
+        ans.ChoiceBoxIndex = -1;
+      }
+      doCommand(e, ans);
+    }
+    ans.Text = entry.Text;
+    if (ans.ChoiceBoxIndex != -1) {
+      ans.Choices = doChoiceBox(ans.ChoiceBoxIndex);
+    }
     return ans;
   }
 };
