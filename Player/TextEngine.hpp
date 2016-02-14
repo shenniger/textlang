@@ -48,7 +48,25 @@ private:
     return a;
   }
 
+  Action genInv() const {
+    Action res;
+    auto itState = _s.NounVals.begin();
+    auto itAssets = _ta.Nouns.begin();
+    while (itState != _s.NounVals.end()) {
+      if ((*itState) && itAssets->T == Noun::InventoryItem) {
+        res.Result += "  " + itAssets->Title + "\n";
+      }
+
+      itState++;
+      itAssets++;
+    }
+    return res;
+  }
+
   Action findAction(const std::pair<ID, std::vector<ID>> &query) const {
+    if (query.first == 0) { // _inv
+      return genInv();
+    }
     Action res;
     uint16_t greatestVal = 0;
     size_t i = 0;
