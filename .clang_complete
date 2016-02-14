@@ -2,6 +2,5 @@
 -std=c++14
 -DCOMPLETION=ON
 -Wall
--fno-rtti
 -Wextra
 -pedantic

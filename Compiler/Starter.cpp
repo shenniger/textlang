@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <iostream>
 #include <fstream>
-#include <Archive.hpp>
+#include <Serialization.hpp>
 #include "Parser.hpp"
 #include "CodeStream.hpp"
 
@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
 
   auto a = Parser<NormalWriter>::parse(readFile(argv[1]))();
   std::ofstream f(argv[2], std::ios::binary);
-  Archive ar(&f);
-  ar &a;
+  Serializer::Write(a, f);
   f.close();
 
   return 0;

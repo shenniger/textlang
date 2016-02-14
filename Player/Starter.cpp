@@ -1,7 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <Error.hpp>
-#include <Archive.hpp>
+#include <Serialization.hpp>
 #include "TextEngine.hpp"
 
 TextEngine te;
@@ -33,13 +33,11 @@ void doAnswer(TextEngine::Answer ans) {
 }
 
 int main() {
+  TextAdventure ta;
+
   // reading assets
   std::ifstream f("test", std::ios::binary); // TODO
-
-  TextAdventure ta;
-  Archive ar(&f);
-  ar &ta;
-
+  Serializer::Read(ta, f);
   f.close();
 
   te = TextEngine(ta);
@@ -49,6 +47,21 @@ int main() {
   for (;;) {
     std::string query;
     std::getline(std::cin, query);
-    doAnswer(te.query(query));
+    // TODO: this REALLY shouldn't be hardcoded
+    if (query == "exit") {
+      return 0;
+    } else if (query == "load") {
+      std::ifstream f(
+          "savegame",
+          std::ios::binary); // TODO: this should'n be hardcoded, too!
+      Serializer::Read(te.state(), f);
+    } else if (query == "save") {
+      std::ofstream f(
+          "savegame",
+          std::ios::binary); // TODO: this should'n be hardcoded, too!
+      Serializer::Write(te.state(), f);
+    } else {
+      doAnswer(te.query(query));
+    }
   }
 }

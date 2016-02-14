@@ -1,6 +1,7 @@
 #ifndef INCLUDED_Parser_hpp
 #define INCLUDED_Parser_hpp
 
+template <class TWriter> class Parser;
 class NormalWriter;
 
 #include <string>

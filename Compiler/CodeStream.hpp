@@ -1,6 +1,8 @@
 #ifndef INCLUDED_CodeStream_hpp
 #define INCLUDED_CodeStream_hpp
 
+class CodeStream;
+
 #include <string>
 #include <vector>
 #include <Error.hpp>

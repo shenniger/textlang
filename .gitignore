@@ -8,3 +8,5 @@ Build
 *.oar
 *.olf
 *.build
+savegame
+test
