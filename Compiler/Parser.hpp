@@ -26,15 +26,15 @@ struct ParsedChoiceBoxEntry {
 
 class NormalWriter {
   TextAdventure _ta;
-  string_vector _verbs;
+  std::vector<std::pair<std::string, ID>> _verbs;
   string_vector _nouns;
   string_vector _choiceboxes;
 
 public:
   NormalWriter() {
     // creating pseudo verbs
-    _ta.Verbs = {{{}, 0}, {{}, 0}, {{}, 0}};
-    _verbs = {"_inv", "_intro", "_unk"};
+    _ta.Verbs = {{{}}, {{}}, {{}}};
+    _verbs = {{"_inv", 0}, {"_intro", 1}, {"_unk", -1}};
     _ta.Nouns = {{Noun::RoomItem, -1, "", {}}};
     _nouns = {"_unk"};
   }
@@ -52,131 +52,134 @@ public:
     return res;
   }
 
-  void writeCommand(std::string name, string_vector args) {
+  void writeCommand(int line, std::string name, string_vector args) {
     if (name == "inc") {
       if (args.size() != 1) {
-        ERROR("inc: Expected exactly 1 argument.");
+        ERROR(line << ": inc: Expected exactly 1 argument.");
       }
       readAnotherFile(*this, args[0]);
     } else if (name == "verb") {
-      if (args.size() != 3) {
-        ERROR("verb: Expected exactly 3 arguments.");
+      if (args.size() != 2) {
+        ERROR(line << ": verb: Expected exactly 2 arguments.");
       }
-      auto r = find(_verbs, args[1]);
-      // TODO: Maybe don't trust the user in giving correct ArgCounts
+      auto r = find(_verbs, [s = args[1]](auto a) { return s == a.first; });
+      ID argCount = std::count(args[0].begin(), args[0].end(), '&');
       if (r == notFound) {
-        _verbs.push_back(args[1]);
-        _ta.Verbs.push_back({{replaceAll(args[0], "&", "(.*)")},
-                             static_cast<int8_t>(std::stoi(args[2]))});
+        _verbs.push_back({args[1], argCount});
+        _ta.Verbs.push_back({{replaceAll(args[0], "&", "(.*)")}});
       } else {
+        if (argCount != _verbs.at(r).second) {
+          ERROR(line << ": verb: Argument count differs for nouns "
+                     << _verbs.at(r).first << "!");
+        }
         _ta.Verbs.at(r).Regexes.push_back(replaceAll(args[0], "&", "(.*)"));
       }
     } else if (name == "inventory") {
       if (args.size() != 2) {
-        ERROR("inventory: Expected exactly 2 arguments.");
+        ERROR(line << ": inventory: Expected exactly 2 arguments.");
       }
       _nouns.push_back(args[1]);
       _ta.Nouns.push_back({Noun::InventoryItem, -1, args[0], {}});
     } else if (name == "var") {
       if (args.size() != 1) {
-        ERROR("var: Expected exactly 1 argument.");
+        ERROR(line << ": var: Expected exactly 1 argument.");
       }
       _nouns.push_back(args[0]);
       _ta.Nouns.push_back({Noun::Variable, -1, std::string(), {}});
     } else if (name == "room") {
       if (args.size() != 2) {
-        ERROR("room: Expected exactly 2 arguments.");
+        ERROR(line << ": room: Expected exactly 2 arguments.");
       }
       _nouns.push_back(args[1]);
       _ta.Nouns.push_back({Noun::Room, -1, args[0], {}});
     } else if (name == "object") {
       if (args.size() != 3) {
-        ERROR("object: Expected exactly 2 arguments.");
+        ERROR(line << ": object: Expected exactly 2 arguments.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR("object: Room couldn't be found: " << args[0] << "!");
+        ERROR(line << ": object: Room couldn't be found: " << args[0] << "!");
       }
       _nouns.push_back(args[2]);
       _ta.Nouns.push_back({Noun::RoomItem, static_cast<ID>(r), args[1], {}});
     } else if (name == "noun") {
       if (args.size() != 2) {
-        ERROR("noun: Expected exactly 2 arguments.");
+        ERROR(line << ": noun: Expected exactly 2 arguments.");
       }
       _nouns.push_back(args[1]);
       _ta.Nouns.push_back({Noun::RoomItem, -1, args[0], {}});
     } else if (name == "alias") {
       if (args.size() != 2) {
-        ERROR("alias: Expected exactly 2 arguments.");
+        ERROR(line << ": alias: Expected exactly 2 arguments.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR("alias: Noun couldn't be found: " << args[0] << "!");
+        ERROR(line << ": alias: Noun couldn't be found: " << args[0] << "!");
       }
       _ta.Nouns.at(r).Aliases.push_back(args[1]);
     } else {
-      ERROR("Unknown Command: " << name);
+      ERROR(line << ": Unknown Command: " << name);
     }
   }
 
-  Command writeActionCmd(std::string s, string_vector args) {
+  Command writeActionCmd(int line, std::string s, string_vector args) {
     if (s == "get" || s == "set") {
       if (args.size() != 1) {
-        ERROR("get/set: Expected exactly 1 argument.");
+        ERROR(line << ": get/set: Expected exactly 1 argument.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR("get/set: Couldn't find " << args[0] << "!");
+        ERROR(line << ": get/set: Couldn't find " << args[0] << "!");
       }
       return {Command::get, static_cast<ID>(r), 0};
     } else if (s == "lose" || s == "unset") {
       if (args.size() != 1) {
-        ERROR("lose/unset: Expected exactly 1 argument.");
+        ERROR(line << ": lose/unset: Expected exactly 1 argument.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR("lose/unset: Couldn't find " << args[0] << "!");
+        ERROR(line << ": lose/unset: Couldn't find " << args[0] << "!");
       }
       return {Command::lose, static_cast<ID>(r), 0};
     } else if (s == "choicebox") {
       if (args.size() != 1) {
-        ERROR("choicebox: Expected exactly 1 argument.");
+        ERROR(line << ": choicebox: Expected exactly 1 argument.");
       }
       auto r = find(_choiceboxes, args[0]);
       if (r == notFound) {
-        ERROR("choicebox: Couldn't find " << args[0] << "!");
+        ERROR(line << ": choicebox: Couldn't find " << args[0] << "!");
       }
       return {Command::choicebox, static_cast<ID>(r), 0};
     } else if (s == "leave") {
       if (args.size() != 0) {
-        ERROR("leave: Expected exactly 0 arguments.");
+        ERROR(line << ": leave: Expected exactly 0 arguments.");
       }
       return {Command::leave, 0, 0};
     } else if (s == "go") {
       if (args.size() != 1) {
-        ERROR("go: Expected exactly 1 argument.");
+        ERROR(line << ": go: Expected exactly 1 argument.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR("go: Couldn't find " << args[0] << "!");
+        ERROR(line << ": go: Couldn't find " << args[0] << "!");
       }
       return {Command::go, static_cast<ID>(r), 0};
     } else if (s == "end") {
       if (args.size() != 0) {
-        ERROR("object: Expected exactly 0 arguments.");
+        ERROR(line << ": object: Expected exactly 0 arguments.");
       }
       return {Command::end, 0, 0};
     }
-    ERROR("Couldn't find action command: " << s << "!");
+    ERROR(line << ": Couldn't find action command: " << s << "!");
   }
 
-  void writeAction(string_vector objects_, std::string verb_,
+  void writeAction(int line, string_vector objects_, std::string verb_,
                    string_vector cond_, std::string text,
                    std::vector<std::pair<std::string, string_vector>> cmds_) {
-    const auto func = [this](auto a) {
+    const auto func = [this, line](auto a) {
       auto r = find(_nouns, a);
       if (r == notFound) {
-        ERROR("Couldn't find " << a << "!");
+        ERROR(line << ": Couldn't find " << a << "!");
       }
       return r;
     };
@@ -184,11 +187,17 @@ public:
     // Selector
     auto objects = map<ID>(objects_, func);
     std::sort(objects.begin(), objects.end());
-    auto v = find(_verbs, verb_);
+    auto v = find(_verbs, [verb_](auto a) { return verb_ == a.first; });
     if (v == notFound) {
-      ERROR("Couldn't find verb " << verb_ << "!");
+      ERROR(line << ": Couldn't find verb " << verb_ << "!");
     }
     ID verb = v;
+    if (_verbs.at(verb).second != static_cast<ID>(objects.size()) &&
+        _verbs.at(verb).second != -1) {
+      ERROR(line << ": Expected " << _verbs.at(verb).second
+                 << " nouns for verb " << _verbs.at(verb).first << ", found "
+                 << objects.size() << "!");
+    }
     uint16_t i = 1;
     std::vector<Condition> cond;
     for (const auto &e : cond_) {
@@ -213,18 +222,18 @@ public:
     // text is already there
 
     // Commands
-    auto cmds = map<Command>(cmds_, [this](auto a) {
-      return this->writeActionCmd(a.first, a.second);
+    auto cmds = map<Command>(cmds_, [this, line](auto a) {
+      return this->writeActionCmd(line, a.first, a.second);
     });
 
     _ta.Actions.push_back({sel, text, cmds});
   }
 
-  Choice writeChoice(ParsedChoiceBoxEntry entry) {
-    const auto func = [this](auto a) {
+  Choice writeChoice(int line, ParsedChoiceBoxEntry entry) {
+    const auto func = [this, line](auto a) {
       auto r = find(_nouns, a);
       if (r == notFound) {
-        ERROR("Couldn't find " << a << "!");
+        ERROR(line << ": Couldn't find " << a << "!");
       }
       return r;
     };
@@ -234,7 +243,7 @@ public:
     for (const auto &e : entry.Cond) {
       if (e.size()) {
         if (e[0] >= '0' && e[0] <= '9') {
-          ERROR("i not supported in ChoiceBoxes!");
+          ERROR(line << ": i not supported in ChoiceBoxes!");
         } else {
           Condition res;
           if (e[0] == '!') {
@@ -252,17 +261,17 @@ public:
     // Choice, Text already there
 
     // Commands
-    auto cmds = map<Command>(entry.Cmds, [this](auto a) {
-      return this->writeActionCmd(a.first, a.second);
+    auto cmds = map<Command>(entry.Cmds, [this, line](auto a) {
+      return this->writeActionCmd(line, a.first, a.second);
     });
 
     return {cond, entry.Choice, entry.Text, cmds};
   }
 
-  void writeChoiceBox(std::string name,
+  void writeChoiceBox(int line, std::string name,
                       std::vector<ParsedChoiceBoxEntry> entries) {
-    auto choices =
-        map<Choice>(entries, [this](auto a) { return this->writeChoice(a); });
+    auto choices = map<Choice>(
+        entries, [this, line](auto a) { return this->writeChoice(line, a); });
     _ta.ChoiceBoxes.push_back({choices});
     _choiceboxes.push_back(name);
   }
@@ -298,11 +307,11 @@ template <class TWriter> class Parser {
     std::string res;
     for (;;) {
       if (_c.eof()) {
-        ERROR("Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF!");
       }
       char a = _c.next();
       if (a == ' ') {
-        ERROR("Unexpected whitespace!");
+        ERROR(_c.lineCount << ": Unexpected whitespace!");
       }
       if (a == begin)
         return res;
@@ -314,7 +323,7 @@ template <class TWriter> class Parser {
     std::string res;
     for (;;) {
       if (_c.eof()) {
-        ERROR("Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF!");
       }
       _c.next();
       if (_c.last == end || _c.last == ',') {
@@ -328,13 +337,13 @@ template <class TWriter> class Parser {
     string_vector res;
     for (;;) {
       if (_c.eof()) {
-        ERROR("Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF!");
       }
       if (_c.last == end) {
         return res;
       }
       auto arg = parseArg(end);
-      if (arg.size())
+      if (!arg.empty())
         res.push_back(trim(arg));
     }
   }
@@ -371,13 +380,14 @@ template <class TWriter> class Parser {
     std::string s;
     for (;;) {
       if (_c.eof()) {
-        ERROR("Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF!");
       }
       char a = _c.next();
       if (a == ' ') {
-        ERROR("Unexpected whitespace!");
+        ERROR(_c.lineCount << ": Unexpected whitespace!");
       }
       if (a == '-') {
+        res.push_back(s);
         s = "";
         continue;
       }
@@ -407,14 +417,15 @@ template <class TWriter> class Parser {
   void parseCommand() {
     std::string name = parseName('(');
     auto args = parseArgs(')');
-    _w.writeCommand(name, args);
+    _w.writeCommand(_c.lineCount, name, args);
   }
 
   void parseAction() {
     auto names = parseNames('(');
     auto args = parseArgs(')');
     if (args.size() != 1) {
-      ERROR("Expected EXACTLY one verb, found " << args.size());
+      ERROR(_c.lineCount << ": Expected EXACTLY one verb, found "
+                         << args.size());
     }
     string_vector args2;
     if (_c.next() != ':') {
@@ -422,12 +433,13 @@ template <class TWriter> class Parser {
     }
     while (_c.last != ':') {
       if (_c.eof()) {
-        ERROR("Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF!");
       }
       _c.next();
     }
     auto text = parseString();
-    _w.writeAction(names, args[0], args2, text.first, text.second);
+    _w.writeAction(_c.lineCount, names, args[0], args2, text.first,
+                   text.second);
   }
 
   void parseChoiceBox() {
@@ -436,7 +448,7 @@ template <class TWriter> class Parser {
     for (;;) {
       while (_c.last != '*') {
         if (_c.eof()) {
-          ERROR("Unexpected EOF!");
+          ERROR(_c.lineCount << ": Unexpected EOF!");
         }
         _c.next();
       }
@@ -451,7 +463,7 @@ template <class TWriter> class Parser {
       auto a = _c.next();
       if (a == '$' || a == '+' || a == '#') {
         _c.rewind();
-        _w.writeChoiceBox(name, entries);
+        _w.writeChoiceBox(_c.lineCount, name, entries);
         return;
       }
     }
@@ -476,7 +488,7 @@ template <class TWriter> class Parser {
       parseChoiceBox();
       break;
     default:
-      ERROR("Unexpected character: " << cmdType);
+      ERROR(_c.lineCount << ": Unexpected character: " << cmdType);
     }
   }
 

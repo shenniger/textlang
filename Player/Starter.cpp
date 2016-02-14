@@ -17,7 +17,7 @@ int main() {
 
   TextEngine te(ta);
 
-  std::cout << te.begin().Text;
+  std::cout << te.begin().Text << std::endl;
 
   for (;;) {
     std::string query;

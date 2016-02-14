@@ -159,7 +159,6 @@ public:
     // find action
     auto action = findAction(query);
 
-    // TODO: _unk ...
     Answer ans;
     ans.Text = action.Result;
 

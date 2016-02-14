@@ -7,7 +7,7 @@
 
 class CodeStream {
   std::string _s;
-  std::string::iterator _it;
+  std::string::const_iterator _it;
   bool _inWhitespace = false;
   bool _inComment = false;
 
@@ -15,8 +15,9 @@ class CodeStream {
 
 public:
   char last;
+  int lineCount = 2; // setting it to 2 is a hack
 
-  CodeStream(const std::string &s) : _s(s) { _it = _s.begin(); }
+  CodeStream(const std::string &s) : _s(s) { _it = _s.cbegin(); }
 
   char rawRead() {
     if (_it == _s.end()) {
@@ -47,6 +48,8 @@ public:
       return next();
     }
     if (isWhitespace(a)) {
+      if (a == '\n')
+        lineCount++;
       if (_inWhitespace)
         return next();
       else {

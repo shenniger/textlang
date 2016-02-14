@@ -24,9 +24,8 @@ using ID = int16_t;
 
 struct Verb {
   std::vector<std::string> Regexes;
-  int8_t NounCount;
 
-  SERIALIZE(&Regexes &NounCount)
+  SERIALIZE(&Regexes)
 };
 
 struct Noun {
@@ -68,9 +67,9 @@ struct ActionSelector {
 
   bool matches(const ID v, const std::vector<ID> n,
                const std::vector<bool> &c) const {
-    std::vector<bool> a(c);
+    std::vector<ID> a(n);
     std::sort(a.begin(), a.end());
-    if (!(v == Verb && Nouns == n))
+    if (!(v == Verb && Nouns == a))
       return false;
     for (auto e : Conditions) {
       if (!e.matches(c))
