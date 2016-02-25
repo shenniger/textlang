@@ -23,7 +23,9 @@ void displayChoiceBox(const TextEngine::Answer &ans) {
 }
 
 void doAnswer(TextEngine::Answer ans) {
-  std::cout << ans.Text << "\n";
+  if (!ans.Text.empty()) {
+    std::cout << ans.Text << "\n";
+  }
   if (ans.Ends) {
     std::exit(0);
   }
@@ -53,12 +55,12 @@ int main() {
     } else if (query == "load") {
       std::ifstream f(
           "savegame",
-          std::ios::binary); // TODO: this should'n be hardcoded, too!
+          std::ios::binary); // TODO: this should'nt be hardcoded, too!
       Serializer::Read(te.state(), f);
     } else if (query == "save") {
       std::ofstream f(
           "savegame",
-          std::ios::binary); // TODO: this should'n be hardcoded, too!
+          std::ios::binary); // TODO: this should'nt be hardcoded, too!
       Serializer::Write(te.state(), f);
     } else {
       doAnswer(te.query(query));

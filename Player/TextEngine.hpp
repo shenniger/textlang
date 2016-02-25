@@ -10,7 +10,6 @@
 #include <stack>
 #include <Algorithms.hpp>
 #include <Serialization.hpp>
-#include <Error.hpp>
 #include <TextAdventure.hpp>
 
 class TextEngine {
@@ -50,8 +49,8 @@ private:
 
   Action genInv() const {
     Action res;
-    auto itState = _s.NounVals.begin();
-    auto itAssets = _ta.Nouns.begin();
+    auto itState = _s.NounVals.cbegin();
+    auto itAssets = _ta.Nouns.cbegin();
     while (itState != _s.NounVals.end()) {
       if ((*itState) && itAssets->T == Noun::InventoryItem) {
         res.Result += "  " + itAssets->Title + "\n";
@@ -126,21 +125,24 @@ private:
     case Command::lose:
       _s.NounVals.at(cmd.Arg1) = false;
       break;
-    case Command::go:
+    case Command::go: {
       _s.NounVals.at(_s.Room) = false;
       _s.NounVals.at(cmd.Arg1) = true;
       _s.Room = cmd.Arg1;
 
-      for (const auto &e : _ta.Actions) {
-        if (e.Selector.Verb == 1 && e.Selector.Nouns[0] == _s.Room) {
-          // found
-          ans.Text += "\n";
-          ans.Text += e.Result;
-          for (auto ele : e.Commands)
-            doCommand(ele, ans);
-        }
+      Answer newAns = execAction(findAction({1, {_s.Room}}));
+      if (ans.Text.empty() || newAns.Text.empty()) {
+        ans.Text += newAns.Text;
+      } else {
+        ans.Text += "\n" + newAns.Text;
       }
+      if (newAns.ChoiceBoxIndex != -1) {
+        ans.ChoiceBoxIndex = newAns.ChoiceBoxIndex;
+        ans.Choices = newAns.Choices;
+      }
+      ans.Ends = ans.Ends || newAns.Ends;
       break;
+    }
     case Command::choicebox:
       ans.ChoiceBoxIndex = cmd.Arg1;
       ans.Choices = doChoiceBox(cmd.Arg1);
@@ -155,6 +157,27 @@ private:
     }
   }
 
+  Answer execAction(const Action action) {
+    Answer ans;
+    ans.Text = action.Result;
+
+    // incrementing I
+    auto itActI = _s.ActI.begin();
+    auto itActions = _ta.Actions.begin();
+    while (itActI != _s.ActI.end()) {
+      if (itActions->Selector == action.Selector) {
+        (*itActI)++;
+      }
+
+      itActI++;
+      itActions++;
+    }
+
+    for (auto e : action.Commands)
+      doCommand(e, ans);
+    return ans;
+  }
+
 public:
   TextEngine() = default;
   TextEngine(const TextAdventure ta)
@@ -167,18 +190,9 @@ public:
         })} {}
 
   Answer begin() {
-    _s.NounVals.at(1) = true;
-    Answer ans;
-    for (const auto &e : _ta.Actions) {
-      if (e.Selector.Verb == 1 && e.Selector.Nouns[0] == _s.Room) {
-        // found
-        ans.Text += "\n";
-        ans.Text += e.Result;
-        for (auto ele : e.Commands)
-          doCommand(ele, ans);
-      }
-    }
-    return ans;
+    _s.NounVals.at(_s.Room) = true;
+
+    return execAction(findAction({1, {_s.Room}}));
   }
 
   Answer query(const std::string text) {
@@ -209,28 +223,7 @@ public:
       }
     }
 
-    // find action
-    auto action = findAction(query);
-
-    Answer ans;
-    ans.Text = action.Result;
-
-    // incrementing I
-    auto itActI = _s.ActI.begin();
-    auto itActions = _ta.Actions.begin();
-    while (itActI != _s.ActI.end()) {
-      if (itActions->Selector == action.Selector) {
-        (*itActI)++;
-      }
-
-      itActI++;
-      itActions++;
-    }
-
-    for (auto e : action.Commands)
-      doCommand(e, ans);
-
-    return ans;
+    return execAction(findAction(query));
   }
 
   Answer choiceBoxQuery(const ID ChoiceBox, const ID Option) {

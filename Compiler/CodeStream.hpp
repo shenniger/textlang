@@ -42,6 +42,9 @@ public:
 
   char next() {
     char a = rawRead();
+    if (a == '\n') {
+      lineCount++;
+    }
     if (a == '\\') {
       _inComment = !_inComment;
       return next();
@@ -50,8 +53,6 @@ public:
       return next();
     }
     if (isWhitespace(a)) {
-      if (a == '\n')
-        lineCount++;
       if (_inWhitespace)
         return next();
       else {

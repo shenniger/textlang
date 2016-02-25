@@ -7,6 +7,8 @@
 #include "Parser.hpp"
 #include "CodeStream.hpp"
 
+std::string curFile;
+
 std::string readFile(const std::string name) {
   std::ifstream stream(name, std::ios::in | std::ios::binary);
   stream.seekg(0, std::ios::end);
@@ -20,8 +22,11 @@ std::string readFile(const std::string name) {
 }
 
 void readAnotherFile(NormalWriter &r, const std::string t) {
+  std::string fileBefore = curFile;
+  curFile = t;
   Parser<NormalWriter> p(readFile(t), r);
   p();
+  curFile = fileBefore;
 }
 
 int main(int argc, char *argv[]) {
@@ -30,6 +35,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  curFile = argv[1];
   auto a = Parser<NormalWriter>::parse(readFile(argv[1]))();
   std::ofstream f(argv[2], std::ios::binary);
   Serializer::Write(a, f);

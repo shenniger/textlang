@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <limits>
+#include <algorithm>
 
 const auto notFound = std::numeric_limits<size_t>::max();
 
@@ -15,16 +17,14 @@ template <class T> size_t find(const std::vector<T> &a, T t) {
       return res;
     res++;
   }
-  return -1;
+  return notFound;
 }
 
 template <class TOut, class TInContainer, class TFunc>
 std::vector<TOut> map(TInContainer in, TFunc func) {
   std::vector<TOut> res;
-  res.reserve(in.size());
-  for (const auto &e : in) {
-    res.push_back(func(e));
-  }
+  res.resize(in.size());
+  std::transform(in.begin(), in.end(), res.begin(), func);
   return res;
 }
 
@@ -35,7 +35,7 @@ template <class T, class Func> size_t find(const std::vector<T> &a, Func f) {
       return res;
     res++;
   }
-  return -1;
+  return notFound;
 }
 
 #endif

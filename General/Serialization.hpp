@@ -23,7 +23,7 @@ struct Serializer {
   template <class T> static void Read(T &t, std::istream &s) {
     boost::archive::binary_iarchive(s) >> t;
   }
-  template <class T> static void Write(T &t, std::ostream &s) {
+  template <class T> static void Write(const T &t, std::ostream &s) {
     boost::archive::binary_oarchive(s) << t;
   }
 };
