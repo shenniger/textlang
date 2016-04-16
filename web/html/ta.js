@@ -15,6 +15,7 @@ function _answer(hAns) { // this TAKES OWNERSHIP of hAns
   else {
     res.choiceBox = new Array();
   }
+  res.clientAction = Module._answerClientAction(hAns);
   Module._destroyAnswer(hAns);
   return res;
 }

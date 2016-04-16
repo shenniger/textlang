@@ -56,9 +56,12 @@ function interpretAnswer(ans) {
     document.getElementsByClassName("command")[0].style = "display:none;";
     document.getElementsByClassName("choiceBoxContainer")[0].appendChild(genChoiceBox(ans.choiceBoxIndex, ans.choiceBox));
     document.getElementsByClassName("choiceBoxContainer")[0].scrollIntoView();
-  }
-  else {
+  } else {
     document.getElementsByClassName("command")[0].style = "display:block;";
+  }
+
+  if(ans.clientAction == 0) {
+    // TODO
   }
 }
 

@@ -13,4 +13,7 @@ extern std::string curFile; // from Starter.cpp
   std::cout << curFile << ":" << E << std::endl;                               \
   std::exit(1)
 
+#define WARN(E)                                                               \
+  std::cout << "WARN: " << curFile << ":" << E << std::endl;
+
 #endif

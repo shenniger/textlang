@@ -12,13 +12,13 @@ struct Choice;
 struct ChoiceBox;
 struct TextAdventure;
 
-#include <stdint.h>
-#include <stddef.h>
-#include <string>
 #include <algorithm>
-#include <vector>
-#include <utility>
+#include <stddef.h>
+#include <stdint.h>
+#include <string>
 #include <textlang/Serialization.hpp>
+#include <utility>
+#include <vector>
 
 using ID = int16_t;
 
@@ -88,7 +88,8 @@ struct Command {
     choicebox, // enter choice box
     leave,     // leave choice box
     go,        // change location
-    end        // ends game
+    client     // runs client action (-1 reserved, 0 for ending game,
+               //                     1-64 reserved)
   };
   Type T;
   ID Arg1, Arg2;

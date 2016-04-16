@@ -1,8 +1,8 @@
 #include <emscripten.h>
 #include <fstream>
 #include <sstream>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string>
 #include <textlang/Player/TextEngine.hpp>
 #include <textlang/Serialization.hpp>
@@ -28,11 +28,12 @@ TextAdventure loadTA(const JSString url) {
   Serializer::Read(res, f);
   EM_ASM(FS.unlink("/advsrc"); // can't use advPath here, we're in JS code!
          );
-  EM_ASM_({
-            console.log("Successfully loaded " + $0 + " nouns, " + $1 +
-                        " verbs and " + $2 + " actions.");
-          },
-          res.Nouns.size(), res.Verbs.size(), res.Actions.size());
+  EM_ASM_(
+      {
+        console.log("Successfully loaded " + $0 + " nouns, " + $1 +
+                    " verbs and " + $2 + " actions.");
+      },
+      res.Nouns.size(), res.Verbs.size(), res.Actions.size());
   return res;
 }
 
@@ -40,9 +41,7 @@ extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void loadTextAdventure(JSString file) {
   auto adv = new TextEngine(loadTA(file));
-  EM_ASM_({
-	   __ta_last_func($0);
-          }, reinterpret_cast<AdvHandle>(adv));
+  EM_ASM_({ __ta_last_func($0); }, reinterpret_cast<AdvHandle>(adv));
 }
 EMSCRIPTEN_KEEPALIVE
 AnsHandle beginTextAdventure(const AdvHandle self_handle) {
@@ -57,9 +56,12 @@ AnsHandle queryTextAdventure(const AdvHandle self_handle, JSString query) {
   return reinterpret_cast<AnsHandle>(ans);
 }
 EMSCRIPTEN_KEEPALIVE
-AnsHandle choiceBoxQueryTextAdventure(const AdvHandle self_handle, const ID ChoiceBoxIndex, const ID ChoiceID) {
+AnsHandle choiceBoxQueryTextAdventure(const AdvHandle self_handle,
+                                      const ID ChoiceBoxIndex,
+                                      const ID ChoiceID) {
   auto &self = *reinterpret_cast<AdvPointer>(self_handle);
-  auto ans = new TextEngine::Answer(self.choiceBoxQuery(ChoiceBoxIndex, ChoiceID));
+  auto ans =
+      new TextEngine::Answer(self.choiceBoxQuery(ChoiceBoxIndex, ChoiceID));
   return reinterpret_cast<AnsHandle>(ans);
 }
 EMSCRIPTEN_KEEPALIVE
@@ -80,7 +82,13 @@ ID answerChoiceBoxNum(const AnsHandle self_handle, const size_t num) {
 }
 EMSCRIPTEN_KEEPALIVE
 JSString answerChoiceBoxEntry(const AnsHandle self_handle, const size_t num) {
-  return reinterpret_cast<AnsPointer>(self_handle)->Choices.at(num).first.c_str();
+  return reinterpret_cast<AnsPointer>(self_handle)
+      ->Choices.at(num)
+      .first.c_str();
+}
+EMSCRIPTEN_KEEPALIVE
+ID answerClientAction(const AnsHandle self_handle) {
+  return reinterpret_cast<AnsPointer>(self_handle)->ClientAction;
 }
 EMSCRIPTEN_KEEPALIVE
 void destroyAnswer(const AnsHandle self_handle) {

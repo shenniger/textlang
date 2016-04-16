@@ -4,14 +4,14 @@
 template <class TWriter> class Parser;
 class NormalWriter;
 
-#include <string>
-#include <vector>
-#include <utility>
 #include <algorithm>
+#include <string>
+#include <textlang/Compiler/CodeStream.hpp>
+#include <textlang/Compiler/Error.hpp>
 #include <textlang/Internal/Algorithms.hpp>
 #include <textlang/Internal/TextAdventure.hpp>
-#include <textlang/Compiler/Error.hpp>
-#include <textlang/Compiler/CodeStream.hpp>
+#include <utility>
+#include <vector>
 
 // abbreviation
 using string_vector = std::vector<std::string>;
@@ -170,7 +170,12 @@ public:
       if (args.size() != 0) {
         ERROR(line << ": object: Expected exactly 0 arguments.");
       }
-      return {Command::end, 0, 0};
+      return {Command::client, 0, 0};
+    } else if (s == "client") {
+      if (args.size() != 1) {
+        ERROR(line << ": client: Expected exactly 1 argument.");
+      }
+      return {Command::client, static_cast<ID>(std::stoi(args.at(0))), 0};
     }
     ERROR(line << ": Couldn't find action command: " << s << "!");
   }
@@ -227,6 +232,15 @@ public:
     auto cmds = map<Command>(cmds_, [this, line](auto a) {
       return this->writeActionCmd(line, a.first, a.second);
     });
+
+    // warnings
+    auto numClientCmds = std::count_if(cmds.begin(), cmds.end(), [](auto a) {
+      return a.T == Command::client;
+    });
+    if (numClientCmds > 1) {
+      WARN(line << ": Found multiple client actions (@end() also belongs to "
+                   "them!). This will most likely not work.");
+    }
 
     _ta.Actions.push_back({sel, replaceAll(text, "//n ", "\n"), cmds});
   }

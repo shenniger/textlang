@@ -16,7 +16,7 @@ class TextEngine {
 public:
   struct Answer {
     std::string Text;
-    bool Ends = false;
+    ID ClientAction = -1;
     ID ChoiceBoxIndex = -1;
     std::vector<std::pair<std::string, ID>> Choices;
   };
@@ -39,12 +39,8 @@ private:
 
   template <class T>
   static std::vector<T> removeFirstElement(const std::vector<T> &v) {
-    if (v.size() < 1) {
-      return {};
-    }
-    std::vector<T> a(v.size() - 1);
-    std::copy(v.begin() + 1, v.end(), a.begin());
-    return a;
+    return v.size() < 1 ? std::vector<T>()
+                        : std::vector<T>(v.begin() + 1, v.end());
   }
 
   Action genInv() const {
@@ -140,7 +136,9 @@ private:
         ans.ChoiceBoxIndex = newAns.ChoiceBoxIndex;
         ans.Choices = newAns.Choices;
       }
-      ans.Ends = ans.Ends || newAns.Ends;
+      if (newAns.ClientAction != -1) {
+        ans.ClientAction = newAns.ClientAction;
+      }
       break;
     }
     case Command::choicebox:
@@ -151,8 +149,8 @@ private:
     case Command::leave:
       // ignoring leave here, handled below
       break;
-    case Command::end:
-      ans.Ends = true;
+    case Command::client:
+      ans.ClientAction = cmd.Arg1;
       break;
     }
   }

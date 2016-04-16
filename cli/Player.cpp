@@ -1,7 +1,7 @@
-#include <iostream>
 #include <fstream>
-#include <textlang/Serialization.hpp>
+#include <iostream>
 #include <textlang/Player/TextEngine.hpp>
+#include <textlang/Serialization.hpp>
 
 TextEngine te;
 
@@ -25,8 +25,11 @@ void doAnswer(TextEngine::Answer ans) {
   if (!ans.Text.empty()) {
     std::cout << ans.Text << "\n";
   }
-  if (ans.Ends) {
+  if (ans.ClientAction == 0) {
     std::exit(0);
+  } else if (ans.ClientAction != -1) {
+    std::cout << "WARNING: unknown client action " << ans.ClientAction
+              << std::endl;
   }
   if (ans.ChoiceBoxIndex != -1) {
     displayChoiceBox(ans);
