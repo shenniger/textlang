@@ -18,7 +18,7 @@ struct TextAdventure;
 #include <algorithm>
 #include <vector>
 #include <utility>
-#include "Serialization.hpp"
+#include <textlang/Serialization.hpp>
 
 using ID = int16_t;
 

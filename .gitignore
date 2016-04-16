@@ -10,3 +10,4 @@ Build
 *.build
 savegame
 test
+Build*

@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <utility>
+#include <textlang/Internal/Algorithms.hpp>
 
 extern std::string curFile; // from Starter.cpp
 

@@ -3,14 +3,16 @@
 #include <stddef.h>
 #include <iostream>
 #include <fstream>
-#include <Serialization.hpp>
-#include "Parser.hpp"
-#include "CodeStream.hpp"
+#include <textlang/Serialization.hpp>
+#include <textlang/Compiler/Parser.hpp>
 
 std::string curFile;
 
 std::string readFile(const std::string name) {
   std::ifstream stream(name, std::ios::in | std::ios::binary);
+  if (!stream) {
+    ERROR(" Couldn't open file " << name << "!" << std::endl);
+  }
   stream.seekg(0, std::ios::end);
   std::string res;
   size_t len = stream.tellg();
@@ -21,10 +23,22 @@ std::string readFile(const std::string name) {
   return res;
 }
 
+#include <boost/filesystem.hpp>
+
+std::string resolveCmdLineArgPath(std::string relative) {
+  return boost::filesystem::absolute(relative).string();
+}
+
+std::string resolvePath(std::string baseLoc, std::string relative) {
+  auto basePath = boost::filesystem::path(baseLoc).parent_path();
+  auto relativePath = boost::filesystem::path(relative);
+  return boost::filesystem::absolute(relativePath, basePath).string();
+}
+
 void readAnotherFile(NormalWriter &r, const std::string t) {
   std::string fileBefore = curFile;
-  curFile = t;
-  Parser<NormalWriter> p(readFile(t), r);
+  curFile = resolvePath(fileBefore, t);
+  Parser<NormalWriter> p(readFile(curFile), r);
   p();
   curFile = fileBefore;
 }
@@ -35,11 +49,10 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  curFile = argv[1];
-  auto a = Parser<NormalWriter>::parse(readFile(argv[1]))();
+  curFile = resolveCmdLineArgPath(argv[1]);
+  auto a = Parser<NormalWriter>::parse(readFile(curFile))();
   std::ofstream f(argv[2], std::ios::binary);
   Serializer::Write(a, f);
-  f.close();
 
   return 0;
 }

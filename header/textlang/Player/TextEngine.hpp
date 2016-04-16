@@ -1,16 +1,16 @@
 #ifndef INCLUDED_TextEngine_hpp
 #define INCLUDED_TextEngine_hpp
 
+#include <regex>
+#include <stack>
 #include <stddef.h>
 #include <stdint.h>
 #include <string>
-#include <vector>
-#include <regex>
+#include <textlang/Internal/Algorithms.hpp>
+#include <textlang/Internal/TextAdventure.hpp>
+#include <textlang/Serialization.hpp>
 #include <utility>
-#include <stack>
-#include <Algorithms.hpp>
-#include <Serialization.hpp>
-#include <TextAdventure.hpp>
+#include <vector>
 
 class TextEngine {
 public:
@@ -222,7 +222,6 @@ public:
         }
       }
     }
-
     return execAction(findAction(query));
   }
 
@@ -232,10 +231,10 @@ public:
     ans.ChoiceBoxIndex = ChoiceBox;
     for (const auto &e : entry.Commands) {
       if (e.T == Command::leave) {
-        if (_choiceBoxes.size() < 2)
+        _choiceBoxes.pop();
+        if (_choiceBoxes.empty()) {
           ans.ChoiceBoxIndex = -1;
-        else {
-          _choiceBoxes.pop();
+        } else {
           ans.ChoiceBoxIndex = _choiceBoxes.top();
         }
       }

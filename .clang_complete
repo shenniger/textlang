@@ -1,6 +1,7 @@
--IGeneral
+-Iheader
 -std=c++14
 -DCOMPLETION=ON
 -Wall
 -Wextra
 -pedantic
+-DUSE_OWN_SERIALIZATION

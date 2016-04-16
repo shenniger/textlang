@@ -8,10 +8,10 @@ class NormalWriter;
 #include <vector>
 #include <utility>
 #include <algorithm>
-#include <Algorithms.hpp>
-#include <Error.hpp>
-#include <TextAdventure.hpp>
-#include "CodeStream.hpp"
+#include <textlang/Internal/Algorithms.hpp>
+#include <textlang/Internal/TextAdventure.hpp>
+#include <textlang/Compiler/Error.hpp>
+#include <textlang/Compiler/CodeStream.hpp>
 
 // abbreviation
 using string_vector = std::vector<std::string>;

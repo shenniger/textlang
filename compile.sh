@@ -3,30 +3,16 @@
 # multithreaded
 # to be extended later
 
-mkdir -p Build
+mkdir -p Build/cli
 
-for i in $(tree Compiler -fi -P "*.cpp" --noreport)
-do
-	if [[ -f $i ]]
-	then
-		mkdir -p `dirname Build/$i`
-		$@ -c -IGeneral -std=c++14 -Wall -Wextra -pedantic $i -o Build/$i.obj -fvisibility=hidden &
-		files="$files Build/$i.obj"
-	fi
-done
+#serializationMode="-DUSE_BOOST_SERIALIZATION -lboost_serialization"
+serializationMode="-DUSE_OWN_SERIALIZATION"
 
-wait
-$@ $files -o Build/TextLangCompiler.build -lboost_locale -lboost_serialization
+#$@ -Iheader -std=c++14 -Wall -Wextra -pedantic cli/Compiler.cpp -o Build/TextLangCompiler.build -fvisibility=hidden -lboost_serialization -lboost_filesystem -lboost_system $serializationMode &
+#$@ -Iheader -std=c++14 -Wall -Wextra -pedantic cli/Player.cpp -o Build/TextLangPlayer.build -fvisibility=hidden -lboost_serialization -lboost_filesystem -lboost_system $serializationMode &
 
-for i in $(tree Player -fi -P "*.cpp" --noreport)
-do
-	if [[ -f $i ]]
-	then
-		mkdir -p `dirname Build/$i`
-		$@ -c -IGeneral -std=c++14 -Wall -Wextra -pedantic $i  -o Build/$i.obj -fvisibility=hidden &
-		files2="$files2 Build/$i.obj"
-	fi
-done
+#emscripten
+cp -r -u web/html Build
+em++ --pre-js web/jsPre.js -s EXPORTED_FUNCTIONS="['_loadTextAdventure', '_beginTextAdventure', '_queryTextAdventure', '_choiceBoxQueryTextAdventure', '_answerText', '_answerChoiceBoxIndex', '_answerChoiceBoxSize', '_answerChoiceBoxNum', '_answerChoiceBoxEntry', '_destroyAnswer', '_destroyTextAdventure']" -s ASYNCIFY=1 -g3 -o Build/html/jsbridge.js web/bridge.cpp -Iheader -std=c++14 -DUSE_OWN_SERIALIZATION
 
 wait
-$@ $files2 -o Build/TextLangPlayer.build -lboost_serialization

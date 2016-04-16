@@ -5,7 +5,7 @@ class CodeStream;
 
 #include <string>
 #include <vector>
-#include <Error.hpp>
+#include <textlang/Compiler/Error.hpp>
 
 class CodeStream {
   std::string _s;

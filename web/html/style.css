@@ -1,0 +1,67 @@
+@charset "utf-8";
+
+@font-face {
+  font-family: 'Vollkorn';
+  src: url('Vollkorn.ttf') format('truetype');
+}
+
+/* TODO: add licenses!!! */
+
+.outer {
+  margin-bottom: 40px;
+}
+
+.cmd {
+  font-size: 1.1em;
+  font-family: monospace;
+}
+
+.response {
+  margin-left: 90px;
+  font-size: 1.6em;
+  font-family: "Vollkorn", serif;
+  margin-bottom: 23px;
+}
+
+.command {
+  position: fixed;
+
+  top: auto;
+  bottom: 0px;
+  left: 10%;
+  right: 10%;
+
+  width: 80%;
+}
+
+.cmd_input {
+  font-size: 1.2em;
+  font-family: monospace;
+  border: solid 3px #000000;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1), 0 0 16px rgba(0, 0, 0, 0.1);
+  padding: 5px;
+  width: 100%;
+}
+
+.cmd_input:focus {
+  box-shadow: inset 0 0 8px rgba(16, 9, 234, 0.8), 0 0 16px rgba(8, 32, 255, 0.5);
+}
+
+.choiceBox {
+  border: solid 5px black;
+  padding: 5px;
+  padding-top: 9px;
+  margin-left: 90px;
+}
+
+a.choice {
+  display: block;
+
+  margin-bottom: 4px;
+
+  font-size: 1.3em;
+  font-family: "Vollkorn", serif;
+  color: #0009ff;
+
+  text-decoration: none;
+}

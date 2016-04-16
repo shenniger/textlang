@@ -1,8 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <Error.hpp>
-#include <Serialization.hpp>
-#include "TextEngine.hpp"
+#include <textlang/Serialization.hpp>
+#include <textlang/Player/TextEngine.hpp>
 
 TextEngine te;
 

@@ -3,10 +3,25 @@
 
 #include <stddef.h>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <limits>
 #include <limits>
 #include <algorithm>
+
+struct BuildString {
+private:
+  std::ostringstream _o;
+
+public:
+  BuildString() = default;
+  BuildString(std::string s) : _o(s) {}
+  template <class T> BuildString &operator<<(T a) {
+    _o << a;
+    return *this;
+  }
+  operator std::string() { return _o.str(); }
+};
 
 const auto notFound = std::numeric_limits<size_t>::max();
 
