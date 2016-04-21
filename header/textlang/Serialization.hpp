@@ -11,21 +11,25 @@
 #include <boost/serialization/base_object.hpp>
 #include <boost/serialization/export.hpp>
 
-#define SERIALIZE(a)                                                           \
-public:                                                                        \
-  template <class Archive> void serialize(Archive &ar, const unsigned int) {   \
-    ar a;                                                                      \
+#define SERIALIZE(a)                                \
+ public:                                            \
+  template <class Archive>                          \
+  void serialize(Archive &ar, const unsigned int) { \
+    ar a;                                           \
   }
 
-#define SERIALIZE_EMPTY()                                                      \
-public:                                                                        \
-  template <class Archive> void serialize(Archive &, const unsigned int) {}
+#define SERIALIZE_EMPTY()  \
+ public:                   \
+  template <class Archive> \
+  void serialize(Archive &, const unsigned int) {}
 
 struct Serializer {
-  template <class T> static void Read(T &t, std::istream &s) {
+  template <class T>
+  static void Read(T &t, std::istream &s) {
     boost::archive::binary_iarchive(s) >> t;
   }
-  template <class T> static void Write(const T &t, std::ostream &s) {
+  template <class T>
+  static void Write(const T &t, std::ostream &s) {
     boost::archive::binary_oarchive(s) << t;
   }
 };
@@ -54,19 +58,30 @@ struct Archive {
     os->write(reinterpret_cast<char *>(&a), sizeof(T));
   }
 
-  void in(std::string &s) {
+  template <class T>
+  void in(std::basic_string<T> &s) {
+    static_assert(
+        std::is_arithmetic<T>{},
+        "Serialization expects arithmetic types for std::basic_string");
+
     LengthType num;
     in(num);
-    s = std::string(num, static_cast<char>(0));
-    is->read(reinterpret_cast<char *>(&(s[0])), num);
+    s = std::basic_string<T>(num, static_cast<T>(0));
+    is->read(reinterpret_cast<char *>(&(s[0])), num * sizeof(T));
   }
-  void out(std::string &s) {
+  template <class T>
+  void out(std::basic_string<T> &s) {
+    static_assert(
+        std::is_arithmetic<T>{},
+        "Serialization expects arithmetic types for std::basic_string");
+
     LengthType num = s.size();
     out(num);
-    os->write(reinterpret_cast<char *>(&(s[0])), num);
+    os->write(reinterpret_cast<char *>(&(s[0])), num * sizeof(T));
   }
 
-  template <class T> void in(std::vector<T> &a) {
+  template <class T>
+  void in(std::vector<T> &a) {
     a = std::vector<T>();
     LengthType num;
     in(num);
@@ -77,7 +92,8 @@ struct Archive {
       a.push_back(t);
     }
   }
-  template <class T> void out(std::vector<T> &a) {
+  template <class T>
+  void out(std::vector<T> &a) {
     LengthType num = a.size();
     out(num);
     for (auto &e : a) {
@@ -104,11 +120,13 @@ struct Archive {
     }
   }
 
-  template <class T1, class T2> void in(std::pair<T1, T2> &a) {
+  template <class T1, class T2>
+  void in(std::pair<T1, T2> &a) {
     in(a.first);
     in(a.second);
   }
-  template <class T1, class T2> void out(std::pair<T1, T2> &a) {
+  template <class T1, class T2>
+  void out(std::pair<T1, T2> &a) {
     out(a.first);
     out(a.second);
   }
@@ -124,11 +142,12 @@ struct Archive {
     a.serialize(*this);
   }
 
-public:
+ public:
   Archive(std::istream &i) : is(&i), os(nullptr) {}
   Archive(std::ostream &o) : is(nullptr), os(&o) {}
 
-  template <class T> Archive &operator&(T &val) {
+  template <class T>
+  Archive &operator&(T &val) {
     if (is != nullptr) {
       in(val);
     } else if (os != nullptr) {
@@ -138,17 +157,21 @@ public:
   }
 };
 
-#define SERIALIZE(a)                                                           \
-public:                                                                        \
+#define SERIALIZE(a) \
+ public:             \
   void serialize(Archive &ar) { ar a; }
 
-#define SERIALIZE_EMPTY()                                                      \
-public:                                                                        \
+#define SERIALIZE_EMPTY() \
+ public:                  \
   void serialize(Archive &) {}
 
 struct Serializer {
-  template <class T> static void Read(T &t, std::istream &s) { Archive(s) & t; }
-  template <class T> static void Write(T &t, std::ostream &s) {
+  template <class T>
+  static void Read(T &t, std::istream &s) {
+    Archive(s) & t;
+  }
+  template <class T>
+  static void Write(T &t, std::ostream &s) {
     Archive(s) & t;
   }
 };

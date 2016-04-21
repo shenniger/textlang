@@ -13,12 +13,23 @@
 #include <vector>
 
 class TextEngine {
-public:
+ public:
   struct Answer {
     std::string Text;
     ID ClientAction = -1;
     ID ChoiceBoxIndex = -1;
     std::vector<std::pair<std::string, ID>> Choices;
+
+    void add(const Answer &o) {
+      Text += o.Text;
+      if (o.ClientAction != -1) {
+        ClientAction = o.ClientAction;
+      }
+      if (o.ChoiceBoxIndex != -1) {
+        ChoiceBoxIndex = o.ChoiceBoxIndex;
+        Choices = o.Choices;
+      }
+    }
   };
 
   struct State {
@@ -29,13 +40,13 @@ public:
     SERIALIZE(&ActI &NounVals &Room)
   };
 
-private:
+ private:
   TextAdventure _ta;
   State _s;
   std::vector<std::vector<std::regex>> _verbs;
 
-  std::stack<ID> _choiceBoxes; // this is not included in State as it's empty
-                               // when the game is being saved
+  std::stack<ID> _choiceBoxes;  // this is not included in State as it's empty
+                                // when the game is being saved
 
   template <class T>
   static std::vector<T> removeFirstElement(const std::vector<T> &v) {
@@ -59,7 +70,7 @@ private:
   }
 
   Action findAction(const std::pair<ID, std::vector<ID>> &query) const {
-    if (query.first == 0) { // _inv
+    if (query.first == 0) {  // _inv
       return genInv();
     }
     Action res;
@@ -75,13 +86,12 @@ private:
       }
       i++;
     }
-    if (!found)
-      return findAction({2, {0}});
+    if (!found) return findAction({2, {0}});
     return res;
   }
 
-  std::pair<ID, std::vector<std::string>>
-  processQuery(const std::string &text) {
+  std::pair<ID, std::vector<std::string>> processQuery(
+      const std::string &text) {
     ID i = 0;
     std::smatch matches;
     for (const auto &e : _verbs) {
@@ -102,8 +112,7 @@ private:
     for (const auto &e : _ta.ChoiceBoxes.at(num).C) {
       bool viable = true;
       for (const auto &eCond : e.Conditions) {
-        if (!eCond.matches(_s.NounVals))
-          viable = false;
+        if (!eCond.matches(_s.NounVals)) viable = false;
       }
       if (viable) {
         res.push_back({e.Choice, i});
@@ -115,43 +124,50 @@ private:
 
   void doCommand(const Command cmd, Answer &ans) {
     switch (cmd.T) {
-    case Command::get:
-      _s.NounVals.at(cmd.Arg1) = true;
-      break;
-    case Command::lose:
-      _s.NounVals.at(cmd.Arg1) = false;
-      break;
-    case Command::go: {
-      _s.NounVals.at(_s.Room) = false;
-      _s.NounVals.at(cmd.Arg1) = true;
-      _s.Room = cmd.Arg1;
+      case Command::get:
+        _s.NounVals.at(cmd.Args.at(0)) = true;
+        break;
+      case Command::lose:
+        _s.NounVals.at(cmd.Args.at(0)) = false;
+        break;
+      case Command::go: {
+        _s.NounVals.at(_s.Room) = false;
+        _s.NounVals.at(cmd.Args.at(0)) = true;
+        _s.Room = cmd.Args.at(0);
 
-      Answer newAns = execAction(findAction({1, {_s.Room}}));
-      if (ans.Text.empty() || newAns.Text.empty()) {
-        ans.Text += newAns.Text;
-      } else {
-        ans.Text += "\n" + newAns.Text;
+        Answer newAns = execAction(findAction({1, {_s.Room}}));
+        if (ans.Text.empty() || newAns.Text.empty()) {
+          ans.Text += newAns.Text;
+        } else {
+          ans.Text += "\n" + newAns.Text;
+        }
+        if (newAns.ChoiceBoxIndex != -1) {
+          ans.ChoiceBoxIndex = newAns.ChoiceBoxIndex;
+          ans.Choices = newAns.Choices;
+        }
+        if (newAns.ClientAction != -1) {
+          ans.ClientAction = newAns.ClientAction;
+        }
+        break;
       }
-      if (newAns.ChoiceBoxIndex != -1) {
-        ans.ChoiceBoxIndex = newAns.ChoiceBoxIndex;
-        ans.Choices = newAns.Choices;
+      case Command::choicebox:
+        ans.ChoiceBoxIndex = cmd.Args.at(0);
+        ans.Choices = doChoiceBox(cmd.Args.at(0));
+        _choiceBoxes.push(ans.ChoiceBoxIndex);
+        break;
+      case Command::leave:
+        // ignoring leave here, handled below
+        break;
+      case Command::call: {
+        std::pair<ID, std::vector<ID>> query = {
+            cmd.Args.at(0), {cmd.Args.begin() + 1, cmd.Args.end()}};
+        auto otherAns = execAction(findAction(query));
+        ans.add(otherAns);
+        break;
       }
-      if (newAns.ClientAction != -1) {
-        ans.ClientAction = newAns.ClientAction;
-      }
-      break;
-    }
-    case Command::choicebox:
-      ans.ChoiceBoxIndex = cmd.Arg1;
-      ans.Choices = doChoiceBox(cmd.Arg1);
-      _choiceBoxes.push(ans.ChoiceBoxIndex);
-      break;
-    case Command::leave:
-      // ignoring leave here, handled below
-      break;
-    case Command::client:
-      ans.ClientAction = cmd.Arg1;
-      break;
+      case Command::client:
+        ans.ClientAction = cmd.Args.at(0);
+        break;
     }
   }
 
@@ -171,16 +187,16 @@ private:
       itActions++;
     }
 
-    for (auto e : action.Commands)
-      doCommand(e, ans);
+    for (auto e : action.Commands) doCommand(e, ans);
     return ans;
   }
 
-public:
+ public:
   TextEngine() = default;
   TextEngine(const TextAdventure ta)
-      : _ta(ta), _s{std::vector<uint16_t>(_ta.Actions.size(), 1),
-                    std::vector<bool>(_ta.Nouns.size(), false), 1},
+      : _ta(ta),
+        _s{std::vector<uint16_t>(_ta.Actions.size(), 1),
+           std::vector<bool>(_ta.Nouns.size(), false), 1},
         _verbs{map<std::vector<std::regex>>(_ta.Verbs, [](Verb a) {
           return map<std::regex>(a.Regexes, [](auto a) {
             return std::regex(a, std::regex_constants::icase);
@@ -197,22 +213,22 @@ public:
     auto verbs = processQuery(text);
     std::pair<ID, std::vector<ID>> query;
     if (verbs.first == -1) {
-      query.first = 2; // _unk
+      query.first = 2;  // _unk
       query.second = {};
     } else {
       query = {verbs.first, map<ID>(verbs.second, [this](auto a) -> ID {
-                 ID res = 0;
-                 for (auto &e : _ta.Nouns) {
-                   for (auto &f : e.Aliases) {
-                     if (a == f &&
-                         (e.T != Noun::InventoryItem || _s.NounVals[res]) &&
-                         (e.InRoom == -1 || e.InRoom == _s.Room))
-                       return res;
-                   }
-                   res++;
-                 }
-                 return -1;
-               })};
+                              ID res = 0;
+                              for (auto &e : _ta.Nouns) {
+                                for (auto &f : e.Aliases) {
+                                  if (a == f && (e.T != Noun::InventoryItem ||
+                                                 _s.NounVals[res]) &&
+                                      (e.InRoom == -1 || e.InRoom == _s.Room))
+                                    return res;
+                                }
+                                res++;
+                              }
+                              return -1;
+                            })};
       for (auto a : query.second) {
         if (a == -1) {
           query.second = {0};

@@ -9,27 +9,13 @@
 #include <limits>
 #include <algorithm>
 
-struct BuildString {
-private:
-  std::ostringstream _o;
-
-public:
-  BuildString() = default;
-  BuildString(std::string s) : _o(s) {}
-  template <class T> BuildString &operator<<(T a) {
-    _o << a;
-    return *this;
-  }
-  operator std::string() { return _o.str(); }
-};
-
 const auto notFound = std::numeric_limits<size_t>::max();
 
-template <class T> size_t find(const std::vector<T> &a, T t) {
+template <class T>
+size_t find(const std::vector<T> &a, const T &t) {
   size_t res = 0;
   for (const auto &e : a) {
-    if (e == t)
-      return res;
+    if (e == t) return res;
     res++;
   }
   return notFound;
@@ -43,11 +29,11 @@ std::vector<TOut> map(TInContainer in, TFunc func) {
   return res;
 }
 
-template <class T, class Func> size_t find(const std::vector<T> &a, Func f) {
+template <class T, class Func>
+size_t find(const std::vector<T> &a, Func f) {
   size_t res = 0;
   for (const auto &e : a) {
-    if (f(e))
-      return res;
+    if (f(e)) return res;
     res++;
   }
   return notFound;

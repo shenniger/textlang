@@ -31,8 +31,8 @@ struct Verb {
 struct Noun {
   enum Type : uint8_t { Room, RoomItem, InventoryItem, Variable };
   Type T;
-  ID InRoom;         // -1 if non-room dependant
-  std::string Title; // not neccessary if Type==Variable
+  ID InRoom;          // -1 if non-room dependant
+  std::string Title;  // not neccessary if Type==Variable
   std::vector<std::string> Aliases;
 
   SERIALIZE(&T &InRoom &Title &Aliases)
@@ -69,11 +69,9 @@ struct ActionSelector {
                const std::vector<bool> &c) const {
     std::vector<ID> a(n);
     std::sort(a.begin(), a.end());
-    if (!(v == Verb && Nouns == a))
-      return false;
+    if (!(v == Verb && Nouns == a)) return false;
     for (auto e : Conditions) {
-      if (!e.matches(c))
-        return false;
+      if (!e.matches(c)) return false;
     }
     return true;
   }
@@ -82,19 +80,21 @@ struct ActionSelector {
 };
 
 struct Command {
+  using Arguments = std::basic_string<ID>;
   enum Type : uint8_t {
-    get,       // get Item, same as set
-    lose,      // lose Item, same as unset
-    choicebox, // enter choice box
-    leave,     // leave choice box
-    go,        // change location
-    client     // runs client action (-1 reserved, 0 for ending game,
-               //                     1-64 reserved)
+    get,        // get Item, same as set
+    lose,       // lose Item, same as unset
+    choicebox,  // enter choice box
+    leave,      // leave choice box
+    go,         // change location
+    call,       // call other action
+    client      // runs client action (-1 reserved, 0 for ending game,
+                //                     1-64 reserved)
   };
   Type T;
-  ID Arg1, Arg2;
+  Arguments Args;
 
-  SERIALIZE(&T &Arg1 &Arg2)
+  SERIALIZE(&T &Args)
 };
 
 struct Action {

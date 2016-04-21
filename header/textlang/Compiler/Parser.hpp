@@ -1,7 +1,8 @@
 #ifndef INCLUDED_Parser_hpp
 #define INCLUDED_Parser_hpp
 
-template <class TWriter> class Parser;
+template <class TWriter>
+class Parser;
 class NormalWriter;
 
 #include <algorithm>
@@ -16,8 +17,8 @@ class NormalWriter;
 // abbreviation
 using string_vector = std::vector<std::string>;
 
-extern std::string curFile;                                 // from Starter.cpp
-void readAnotherFile(NormalWriter &r, const std::string t); // from Starter.cpp
+extern std::string curFile;                                  // from Starter.cpp
+void readAnotherFile(NormalWriter &r, const std::string t);  // from Starter.cpp
 
 struct ParsedChoiceBoxEntry {
   std::string Choice;
@@ -32,7 +33,7 @@ class NormalWriter {
   string_vector _nouns;
   string_vector _choiceboxes;
 
-public:
+ public:
   NormalWriter() {
     // creating pseudo verbs
     _ta.Verbs = {{{}}, {{}}, {{}}};
@@ -43,8 +44,7 @@ public:
 
   std::string replaceAll(const std::string &haystack, const std::string &needle,
                          const std::string &to) {
-    if (haystack.empty())
-      return haystack;
+    if (haystack.empty()) return haystack;
     std::string res{haystack};
     size_t pos = 0;
     while ((pos = res.find(needle, pos)) != std::string::npos) {
@@ -133,7 +133,7 @@ public:
       if (r == notFound) {
         ERROR(line << ": get/set: Couldn't find " << args[0] << "!");
       }
-      return {Command::get, static_cast<ID>(r), 0};
+      return {Command::get, {static_cast<ID>(r)}};
     } else if (s == "lose" || s == "unset") {
       if (args.size() != 1) {
         ERROR(line << ": lose/unset: Expected exactly 1 argument.");
@@ -142,7 +142,7 @@ public:
       if (r == notFound) {
         ERROR(line << ": lose/unset: Couldn't find " << args[0] << "!");
       }
-      return {Command::lose, static_cast<ID>(r), 0};
+      return {Command::lose, {static_cast<ID>(r)}};
     } else if (s == "choicebox") {
       if (args.size() != 1) {
         ERROR(line << ": choicebox: Expected exactly 1 argument.");
@@ -151,12 +151,12 @@ public:
       if (r == notFound) {
         ERROR(line << ": choicebox: Couldn't find " << args[0] << "!");
       }
-      return {Command::choicebox, static_cast<ID>(r), 0};
+      return {Command::choicebox, {static_cast<ID>(r)}};
     } else if (s == "leave") {
       if (args.size() != 0) {
         ERROR(line << ": leave: Expected exactly 0 arguments.");
       }
-      return {Command::leave, 0, 0};
+      return {Command::leave, {}};
     } else if (s == "go") {
       if (args.size() != 1) {
         ERROR(line << ": go: Expected exactly 1 argument.");
@@ -165,17 +165,39 @@ public:
       if (r == notFound) {
         ERROR(line << ": go: Couldn't find " << args[0] << "!");
       }
-      return {Command::go, static_cast<ID>(r), 0};
+      return {Command::go, {static_cast<ID>(r)}};
     } else if (s == "end") {
       if (args.size() != 0) {
         ERROR(line << ": object: Expected exactly 0 arguments.");
       }
-      return {Command::client, 0, 0};
+      return {Command::client, {static_cast<ID>(0)}};
+    } else if (s == "call") {
+      if (args.size() < 1) {
+        ERROR(line << ": call: Expected more at least 1 argument.");
+      }
+      auto verb = find(_verbs, [s = args[0]](auto a) { return s == a.first; });
+      if (verb == notFound) {
+        ERROR(line << ": call: Couldn't find verb " << args[0] << "!");
+      }
+      auto nouns = string_vector(args.begin() + 1, args.end());
+      // TODO: check correct amount of nouns
+      auto nounIDs = map<ID>(nouns, [this, line](const auto &a) {
+        auto res = find(this->_nouns, a);
+        if (res == notFound) {
+          ERROR(line << "call: Couldn't find noun " << a << "!");
+        }
+        return res;
+      });
+      Command::Arguments resArgs;
+      resArgs.resize(1 + nounIDs.size());
+      resArgs.at(0) = verb;
+      std::copy(nounIDs.begin(), nounIDs.end(), resArgs.begin() + 1);
+      return {Command::call, resArgs};
     } else if (s == "client") {
       if (args.size() != 1) {
         ERROR(line << ": client: Expected exactly 1 argument.");
       }
-      return {Command::client, static_cast<ID>(std::stoi(args.at(0))), 0};
+      return {Command::client, {static_cast<ID>(std::stoi(args.at(0)))}};
     }
     ERROR(line << ": Couldn't find action command: " << s << "!");
   }
@@ -234,9 +256,9 @@ public:
     });
 
     // warnings
-    auto numClientCmds = std::count_if(cmds.begin(), cmds.end(), [](auto a) {
-      return a.T == Command::client;
-    });
+    auto numClientCmds =
+        std::count_if(cmds.begin(), cmds.end(),
+                      [](auto a) { return a.T == Command::client; });
     if (numClientCmds > 1) {
       WARN(line << ": Found multiple client actions (@end() also belongs to "
                    "them!). This will most likely not work.");
@@ -295,7 +317,8 @@ public:
   TextAdventure operator()() { return _ta; }
 };
 
-template <class TWriter> class Parser {
+template <class TWriter>
+class Parser {
   CodeStream _c;
   TWriter &_w;
 
@@ -329,8 +352,7 @@ template <class TWriter> class Parser {
       if (a == ' ') {
         ERROR(_c.lineCount << ": Unexpected whitespace!");
       }
-      if (a == begin)
-        return res;
+      if (a == begin) return res;
       res += a;
     }
   }
@@ -359,8 +381,7 @@ template <class TWriter> class Parser {
         return res;
       }
       auto arg = parseArg(end);
-      if (!arg.empty())
-        res.push_back(trim(arg));
+      if (!arg.empty()) res.push_back(trim(arg));
     }
   }
 
@@ -408,8 +429,7 @@ template <class TWriter> class Parser {
         continue;
       }
       if (a == begin) {
-        if (!s.empty())
-          res.push_back(s);
+        if (!s.empty()) res.push_back(s);
         return res;
       }
       s += a;
@@ -471,7 +491,7 @@ template <class TWriter> class Parser {
       string_vector args;
       if (_c.next() != ':') {
         args = parseArgs(']');
-        _c.next(); // jump over
+        _c.next();  // jump over
       }
       auto entry = parseCBEntry();
       auto str = parseString();
@@ -494,21 +514,21 @@ template <class TWriter> class Parser {
       cmdType = _c.next();
     }
     switch (cmdType) {
-    case '+':
-      parseCommand();
-      break;
-    case '$':
-      parseAction();
-      break;
-    case '#':
-      parseChoiceBox();
-      break;
-    default:
-      ERROR(_c.lineCount << ": Unexpected character: " << cmdType);
+      case '+':
+        parseCommand();
+        break;
+      case '$':
+        parseAction();
+        break;
+      case '#':
+        parseChoiceBox();
+        break;
+      default:
+        ERROR(_c.lineCount << ": Unexpected character: " << cmdType);
     }
   }
 
-public:
+ public:
   Parser(std::string s, TWriter &t) : _c(s), _w(t) {}
 
   void operator()() {
