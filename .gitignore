@@ -10,4 +10,6 @@ Build
 *.build
 savegame
 test
+test.*
 Build*
+*.swp

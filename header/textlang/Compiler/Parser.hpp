@@ -267,6 +267,77 @@ class NormalWriter {
     _ta.Actions.push_back({sel, replaceAll(text, "//n ", "\n"), cmds});
   }
 
+  void writeCallOnlyAction(int line, string_vector objects_, std::string verb_,
+                           string_vector cond_, string_vector toObjects_,
+                           std::string toVerb_) {
+    const auto func = [this, line](auto a) {
+      auto r = find(_nouns, a);
+      if (r == notFound) {
+        ERROR(line << ": Couldn't find " << a << "!");
+      }
+      return r;
+    };
+
+    // Selector
+    auto objects = map<ID>(objects_, func);
+    std::sort(objects.begin(), objects.end());
+    auto v = find(_verbs, [verb_](auto a) { return verb_ == a.first; });
+    if (v == notFound) {
+      ERROR(line << ": Couldn't find verb " << verb_ << "!");
+    }
+    ID verb = v;
+    if (_verbs.at(verb).second != static_cast<ID>(objects.size()) &&
+        _verbs.at(verb).second != -1) {
+      ERROR(line << ": Expected " << _verbs.at(verb).second
+                 << " nouns for verb " << _verbs.at(verb).first << ", found "
+                 << objects.size() << "!");
+    }
+
+    uint16_t i = 1;
+    std::vector<Condition> cond;
+    for (const auto &e : cond_) {
+      if (e.size()) {
+        if (e[0] >= '0' && e[0] <= '9') {
+          i = std::stoi(e);
+        } else {
+          Condition res;
+          if (e[0] == '!') {
+            res.expectedValue = false;
+            res.var = func(e.substr(1));
+          } else {
+            res.expectedValue = true;
+            res.var = func(e);
+          }
+          cond.push_back(res);
+        }
+      }
+    }
+    ActionSelector sel = {verb, objects, i, cond};
+
+    auto objects2 = map<ID>(toObjects_, func);
+    std::sort(objects2.begin(), objects2.end());
+    auto v2 = find(_verbs, [toVerb_](auto a) { return toVerb_ == a.first; });
+    if (v2 == notFound) {
+      ERROR(line << ": Couldn't find verb " << toVerb_ << "!");
+    }
+    ID verb2 = v2;
+    if (_verbs.at(verb).second != static_cast<ID>(objects2.size()) &&
+        _verbs.at(verb).second != -1) {
+      ERROR(line << ": Expected " << _verbs.at(verb2).second
+                 << " nouns for verb " << _verbs.at(verb2).first << ", found "
+                 << objects2.size() << "!");
+    }
+
+    Command::Arguments callArgs;
+    callArgs.resize(1 + objects2.size());
+    callArgs.at(0) = verb2;
+    std::copy(objects2.begin(), objects2.end(), callArgs.begin() + 1);
+
+    Command cmd = {Command::call, callArgs};
+
+    _ta.Actions.push_back({sel, "", {cmd}});
+  }
+
   Choice writeChoice(int line, ParsedChoiceBoxEntry entry) {
     const auto func = [this, line](auto a) {
       auto r = find(_nouns, a);
@@ -332,8 +403,8 @@ class Parser {
     return a;
   }
   std::string trimEnd(const std::string &a) {
-    if (a.size()) {
-      if (a[a.size() - 1] == ' ') {
+    if (!a.empty()) {
+      if (a.back() == ' ') {
         return a.substr(0, a.size() - 1);
       }
       return a;
@@ -346,11 +417,12 @@ class Parser {
     std::string res;
     for (;;) {
       if (_c.eof()) {
-        ERROR(_c.lineCount << ": Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF (after '" << begin << "')!");
       }
       char a = _c.next();
       if (a == ' ') {
-        ERROR(_c.lineCount << ": Unexpected whitespace!");
+        ERROR(_c.lineCount << ": Unexpected whitespace (after '" << begin
+                           << "')!");
       }
       if (a == begin) return res;
       res += a;
@@ -361,7 +433,8 @@ class Parser {
     std::string res;
     for (;;) {
       if (_c.eof()) {
-        ERROR(_c.lineCount << ": Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF during argument (expected '"
+                           << end << "')!");
       }
       _c.next();
       if (_c.last == end || _c.last == ',') {
@@ -375,7 +448,8 @@ class Parser {
     string_vector res;
     for (;;) {
       if (_c.eof()) {
-        ERROR(_c.lineCount << ": Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF during arguments (expected '"
+                           << end << "'!");
       }
       if (_c.last == end) {
         return res;
@@ -417,11 +491,12 @@ class Parser {
     std::string s;
     for (;;) {
       if (_c.eof()) {
-        ERROR(_c.lineCount << ": Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF during name (after '" << begin
+                           << "')!");
       }
       char a = _c.next();
       if (a == ' ') {
-        ERROR(_c.lineCount << ": Unexpected whitespace!");
+        ERROR(_c.lineCount << ": Unexpected whitespace during name!");
       }
       if (a == '-') {
         res.push_back(s);
@@ -464,18 +539,32 @@ class Parser {
                          << args.size());
     }
     string_vector args2;
-    if (_c.next() != ':') {
+    _c.next();
+    if (_c.last == ' ') _c.next();
+    if (_c.last == '[') {
       args2 = parseArgs(']');
     }
-    while (_c.last != ':') {
+    while (_c.last != ':' && _c.last != '=') {
       if (_c.eof()) {
-        ERROR(_c.lineCount << ": Unexpected EOF!");
+        ERROR(_c.lineCount << ": Unexpected EOF during action!");
       }
       _c.next();
     }
-    auto text = parseString();
-    _w.writeAction(_c.lineCount, names, args[0], args2, text.first,
-                   text.second);
+    if (_c.last == '=') {
+      if (_c.next() != ' ') _c.rewind();
+      auto toNames = parseNames('(');
+      auto toArgs = parseArgs(')');
+      if (toArgs.size() != 1) {
+        ERROR(_c.lineCount << ": Expected EXACTLY one verb, found "
+                           << toArgs.size());
+      }
+      _w.writeCallOnlyAction(_c.lineCount, names, args[0], args2, toNames,
+                             toArgs[0]);
+    } else {
+      auto text = parseString();
+      _w.writeAction(_c.lineCount, names, args[0], args2, text.first,
+                     text.second);
+    }
   }
 
   void parseChoiceBox() {
@@ -484,7 +573,7 @@ class Parser {
     for (;;) {
       while (_c.last != '*') {
         if (_c.eof()) {
-          ERROR(_c.lineCount << ": Unexpected EOF!");
+          ERROR(_c.lineCount << ": Unexpected EOF during ChoiceBox!");
         }
         _c.next();
       }
