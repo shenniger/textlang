@@ -125,22 +125,23 @@ class NormalWriter {
   }
 
   Command writeActionCmd(int line, std::string s, string_vector args) {
-    if (s == "get" || s == "set") {
+    if (s == "get" || s == "set" || s == "reactivate") {
       if (args.size() != 1) {
-        ERROR(line << ": get/set: Expected exactly 1 argument.");
+        ERROR(line << ": get/set/reactivate: Expected exactly 1 argument.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR(line << ": get/set: Couldn't find " << args[0] << "!");
+        ERROR(line << ": get/set/reactivate: Couldn't find " << args[0] << "!");
       }
       return {Command::get, {static_cast<ID>(r)}};
-    } else if (s == "lose" || s == "unset") {
+    } else if (s == "lose" || s == "unset" || s == "deactivate") {
       if (args.size() != 1) {
-        ERROR(line << ": lose/unset: Expected exactly 1 argument.");
+        ERROR(line << ": lose/unset/deactivate: Expected exactly 1 argument.");
       }
       auto r = find(_nouns, args[0]);
       if (r == notFound) {
-        ERROR(line << ": lose/unset: Couldn't find " << args[0] << "!");
+        ERROR(line << ": lose/unset/deactivate: Couldn't find " << args[0]
+                   << "!");
       }
       return {Command::lose, {static_cast<ID>(r)}};
     } else if (s == "choicebox") {
@@ -256,9 +257,9 @@ class NormalWriter {
     });
 
     // warnings
-    auto numClientCmds =
-        std::count_if(cmds.begin(), cmds.end(),
-                      [](auto a) { return a.T == Command::client; });
+    auto numClientCmds = std::count_if(cmds.begin(), cmds.end(), [](auto a) {
+      return a.T == Command::client;
+    });
     if (numClientCmds > 1) {
       WARN(line << ": Found multiple client actions (@end() also belongs to "
                    "them!). This will most likely not work.");

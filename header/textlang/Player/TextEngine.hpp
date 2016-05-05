@@ -1,10 +1,10 @@
 #ifndef INCLUDED_TextEngine_hpp
 #define INCLUDED_TextEngine_hpp
 
-#include <regex>
-#include <stack>
 #include <stddef.h>
 #include <stdint.h>
+#include <regex>
+#include <stack>
 #include <string>
 #include <textlang/Internal/Algorithms.hpp>
 #include <textlang/Internal/TextAdventure.hpp>
@@ -187,7 +187,7 @@ class TextEngine {
       itActions++;
     }
 
-    for (auto e : action.Commands) doCommand(e, ans);
+    for (const auto &e : action.Commands) doCommand(e, ans);
     return ans;
   }
 
@@ -196,7 +196,8 @@ class TextEngine {
   TextEngine(const TextAdventure ta)
       : _ta(ta),
         _s{std::vector<uint16_t>(_ta.Actions.size(), 1),
-           std::vector<bool>(_ta.Nouns.size(), false), 1},
+           map<bool>(_ta.Nouns, [](auto a) { return a.T == Noun::RoomItem; }),
+           1},
         _verbs{map<std::vector<std::regex>>(_ta.Verbs, [](Verb a) {
           return map<std::regex>(a.Regexes, [](auto a) {
             return std::regex(a, std::regex_constants::icase);
@@ -217,18 +218,19 @@ class TextEngine {
       query.second = {};
     } else {
       query = {verbs.first, map<ID>(verbs.second, [this](auto a) -> ID {
-                              ID res = 0;
-                              for (auto &e : _ta.Nouns) {
-                                for (auto &f : e.Aliases) {
-                                  if (a == f && (e.T != Noun::InventoryItem ||
-                                                 _s.NounVals[res]) &&
-                                      (e.InRoom == -1 || e.InRoom == _s.Room))
-                                    return res;
-                                }
-                                res++;
-                              }
-                              return -1;
-                            })};
+                 ID res = 0;
+                 for (auto &e : _ta.Nouns) {
+                   for (auto &f : e.Aliases) {
+                     if (a == f && ((e.T != Noun::InventoryItem &&
+                                     e.T != Noun::RoomItem) ||
+                                    _s.NounVals[res]) &&
+                         (e.InRoom == -1 || e.InRoom == _s.Room))
+                       return res;
+                   }
+                   res++;
+                 }
+                 return -1;
+               })};
       for (auto a : query.second) {
         if (a == -1) {
           query.second = {0};
