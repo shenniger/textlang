@@ -50,7 +50,9 @@ int main(int argc, char *argv[]) {
   }
 
   curFile = resolveCmdLineArgPath(argv[1]);
-  auto a = Parser<NormalWriter>::parse(readFile(curFile))();
+  auto writer = Parser<NormalWriter>::parse(readFile(curFile));
+  writer.check();
+  auto a = writer();
   std::ofstream f(argv[2], std::ios::binary);
   Serializer::Write(a, f);
 

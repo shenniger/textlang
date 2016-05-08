@@ -82,8 +82,8 @@ struct ActionSelector {
 struct Command {
   using Arguments = std::basic_string<ID>;
   enum Type : uint8_t {
-    get,        // get Item, same as set
-    lose,       // lose Item, same as unset
+    get,        // get Item, same as set and reactivate
+    lose,       // lose Item, same as unset and deactivate
     choicebox,  // enter choice box
     leave,      // leave choice box
     go,         // change location

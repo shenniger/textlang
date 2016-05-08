@@ -257,9 +257,9 @@ class NormalWriter {
     });
 
     // warnings
-    auto numClientCmds = std::count_if(cmds.begin(), cmds.end(), [](auto a) {
-      return a.T == Command::client;
-    });
+    auto numClientCmds =
+        std::count_if(cmds.begin(), cmds.end(),
+                      [](auto a) { return a.T == Command::client; });
     if (numClientCmds > 1) {
       WARN(line << ": Found multiple client actions (@end() also belongs to "
                    "them!). This will most likely not work.");
@@ -387,6 +387,47 @@ class NormalWriter {
   }
 
   TextAdventure operator()() { return _ta; }
+  void check() {
+    if (_ta.Nouns.size() < 2) {
+      ERROR_GEN("There must be at least one room!");
+    }
+    if (_ta.Nouns.at(1).T != Noun::Room) {
+      // let's see whether there are no rooms at all declared or whether the
+      // room is declared at a wrong location
+      if (std::find_if(_ta.Nouns.begin(), _ta.Nouns.end(), [](auto a) {
+            return a.T == Noun::Room;
+          }) != _ta.Nouns.end()) {
+        ERROR_GEN("The first room must be the first defined noun!");
+      } else {
+        ERROR_GEN("There must be at least one room!");
+      }
+    }
+    if (std::find_if(_ta.Actions.begin(), _ta.Actions.end(),
+                     [](const Action a) {
+          return a.Selector.Nouns.empty() && a.Selector.Verb == 2 /* _unk */;
+        }) == _ta.Actions.end()) {
+      ERROR_GEN(
+          "There must be an action for undetected verbs.\nExample: \"$(_unk): "
+          "I didn't get that.\"");
+    }
+    if (std::find_if(_ta.Actions.begin(), _ta.Actions.end(),
+                     [](const Action a) {
+          return a.Selector.Nouns.size() == 1 &&
+                 a.Selector.Nouns[0] == 0 /* _unk */ &&
+                 a.Selector.Verb == 2 /* _unk */;
+        }) == _ta.Actions.end()) {
+      ERROR_GEN(
+          "There must be an action that is displayed in the case that no other "
+          "action was found.\nExample: \"$_unk(_unk): I can't do "
+          "that.\"");
+    }
+    if (_ta.Verbs.at(0) /* _inv */ .Regexes.empty()) {
+      WARN_GEN(
+          "No inventory verbs have been declared. The user will be unable to "
+          "see his inventory.\nYou can fix that by adding something like "
+          "\"+verb(inventory, _inv)\".");
+    }
+  }
 };
 
 template <class TWriter>

@@ -86,7 +86,12 @@ class TextEngine {
       }
       i++;
     }
-    if (!found) return findAction({2, {0}});
+    if (!found) {
+      if (query.first == 1 /* _intro */)
+        return Action();
+      else
+        return findAction({2, {0}});
+    }
     return res;
   }
 
@@ -218,19 +223,19 @@ class TextEngine {
       query.second = {};
     } else {
       query = {verbs.first, map<ID>(verbs.second, [this](auto a) -> ID {
-                 ID res = 0;
-                 for (auto &e : _ta.Nouns) {
-                   for (auto &f : e.Aliases) {
-                     if (a == f && ((e.T != Noun::InventoryItem &&
-                                     e.T != Noun::RoomItem) ||
-                                    _s.NounVals[res]) &&
-                         (e.InRoom == -1 || e.InRoom == _s.Room))
-                       return res;
-                   }
-                   res++;
-                 }
-                 return -1;
-               })};
+                              ID res = 0;
+                              for (auto &e : _ta.Nouns) {
+                                for (auto &f : e.Aliases) {
+                                  if (a == f && ((e.T != Noun::InventoryItem &&
+                                                  e.T != Noun::RoomItem) ||
+                                                 _s.NounVals[res]) &&
+                                      (e.InRoom == -1 || e.InRoom == _s.Room))
+                                    return res;
+                                }
+                                res++;
+                              }
+                              return -1;
+                            })};
       for (auto a : query.second) {
         if (a == -1) {
           query.second = {0};
