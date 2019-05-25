@@ -57,12 +57,12 @@ int main() {
     } else if (query == "load") {
       std::ifstream f(
           "savegame",
-          std::ios::binary); // TODO: this should'nt be hardcoded, too!
+          std::ios::binary); // TODO: this shouldn't be hardcoded either!
       Serializer::Read(te.state(), f);
     } else if (query == "save") {
       std::ofstream f(
           "savegame",
-          std::ios::binary); // TODO: this should'nt be hardcoded, too!
+          std::ios::binary); // TODO: this shouldn't be hardcoded either!
       Serializer::Write(te.state(), f);
     } else {
       doAnswer(te.query(query));
