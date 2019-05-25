@@ -3,6 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="style.css" />
+    <script type="text/javascript">
+      // This is Emscripten's way of saying `$(document).ready`.
+      var Module = { onRuntimeInitialized: function() { init(); } };
+    </script>
     <script src="jsbridge.js"></script>
     <script src="ta.js"></script>
     <script src="test.js"></script>
@@ -20,9 +24,5 @@
         <input type="text" class="cmd_input" value="" />
       </form>
     </div>
-
-    <script>
-      init();
-    </script>
   </body>
 </html>

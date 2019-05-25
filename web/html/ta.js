@@ -1,18 +1,18 @@
 function _answer(hAns) { // this TAKES OWNERSHIP of hAns
   var res = new Object();
-  res.text = Module.Pointer_stringify(Module._answerText(hAns));
+  res.text = Module.UTF8ToString(Module._answerText(hAns), 65535);
   res.choiceBoxIndex = Module._answerChoiceBoxIndex(hAns);
-  if(res.choiceBoxIndex !== -1) {
+  if (res.choiceBoxIndex !== -1) {
     var len = Module._answerChoiceBoxSize(hAns);
     res.choiceBox = new Array(len);
-    for(i = 0; i < len; i++) {
+    for (i = 0; i < len; i++) {
       var choice = new Object();
-      choice.text = Module.Pointer_stringify(Module._answerChoiceBoxEntry(hAns, i));
+      choice.text =
+          Module.UTF8ToString(Module._answerChoiceBoxEntry(hAns, i), 65535);
       choice.id = Module._answerChoiceBoxNum(hAns, i);
       res.choiceBox[i] = choice;
     }
-  }
-  else {
+  } else {
     res.choiceBox = new Array();
   }
   res.clientAction = Module._answerClientAction(hAns);
@@ -32,7 +32,8 @@ function beginTextAdventure(adv) {
 }
 
 function choiceBoxQueryTextAdventure(adv, choiceBoxID, choiceID) {
-  return _answer(Module._choiceBoxQueryTextAdventure(adv, choiceBoxID, choiceID));
+  return _answer(
+      Module._choiceBoxQueryTextAdventure(adv, choiceBoxID, choiceID));
 }
 
 function queryTextAdventure(adv, str) {
