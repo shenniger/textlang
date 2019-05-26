@@ -1,0 +1,119 @@
+\
+  This is a self-contained demo adventure.
+  Not very interesting or fun to play, but nice for debugging and learning.
+\
+
+\ Verb definitions \
+\ Syntax: +verb(PATTERN, NAME, AMOUNT OF ARGUMENTS) \
++verb(look around, lookaround)
++verb(look at &, look)
++verb(look &, look)
++verb(take &, take)
++verb(use & on &, useon)
++verb(use & with &, useon)
++verb(turn on &, turn)
++verb(turn & on, turn)
++verb(switch & on, turn)
++verb(switch on &, turn)
++verb(turn &, turn)
++verb(switch &, turn)
++verb(talk to &, talk)
++verb(talk &, talk)
++verb(go through &, go)
++verb(go &, go)
++verb(inv, _inv)
++verb(inventory, _inv)
+
+\ Room definitions \
+\ Syntax: +room(TITLE, NAME) \
++room(First Room, room1)
++room(Second Room, room2)
+
+\ Room object definitions \
+\ 
+  Syntax:
+    +object(ROOM, TITLE, NAME)
+    +alias(NAME, NOUN)
+\
++object(room1, Light Switch, switch)
++alias(switch, lights)
++alias(switch, light)
++alias(switch, lightswitch)
++alias(switch, light switch)
++alias(switch, switch)
++object(room1, Keyboard, keyboard)
++alias(keyboard, keyboard)
++object(room1, Door, door)
++alias(door, door)
++object(room2, Door, door2)
++alias(door2, door)
++object(room2, Computer, computer)
++alias(computer, computer)
+
+\ Noun definitions \
+\ 
+  Syntax:
+    +noun(TITLE, NAME)
+    +alias(NAME, NOUN)
+\
++noun(North, north)
++alias(north, north)
++noun(East, east)
++alias(east, east)
++noun(South, south)
++alias(south, south)
++noun(West, west)
++alias(west, west)
+
+\ Variables \
+\ Syntax: +var(NAME) \
+\ by default: zero-initalized \
++var(lightsOn)
+
+\ Inventory items \
+\ 
+  Syntax:
+    +inv(TITLE, NAME)
+    +alias(NAME, NOUN)
+\
++inventory(Keyboard, keyboard_inv)
++alias(keyboard_inv, keyboard)
+
+\ Fallback answers. \
+$(_unk): I didn't understand one of the words you used.
+$_unk(_unk): I can't do that.
+
+\ Code for the first room \
+\ Syntax for an action: $NOUN-...-NOUN(VERB)[N, VARS...]: TEXT and COMMANDS \
+$room1(_intro)[1]: Welcome to the TextLang demo adventure. @call(lookaround)
+$room1(_intro)[2]:
+$(lookaround)[room1, !lightsOn]: You're in a room, or at least you think so.
+It is dark and you cannot see anything. Maybe there is a light switch somewhere?
+$(lookaround)[room1, lightsOn]: You can see a keyboard lying on the ground and a
+door leading to another room to the west.
+$switch(look)[!lightsOn]: You can feel a light switch.
+$switch(look)[lightsOn]: Turned on.
+$switch(turn)[!lightsOn]: Turned on. @get(lightsOn)
+$switch(turn)[lightsOn]: Already turned on.
+$keyboard(look)[lightsOn]: A normal 102-key computer keyboard. Nothing special about it.
+$keyboard(take)[lightsOn]: Taken. @lose(keyboard) @get(keyboard_inv)
+$west(go)[room1, lightsOn]: @go(room2)
+$door(go)[lightsOn]: @go(room2)
+
+$room2(_intro)[1]: @call(lookaround)
+$room2(_intro)[2]:
+$(lookaround)[room2]: You're in another room. There's a computer here.
+$east(go)[room2]: @go(room1)
+$door2(go): @go(room1)
+
+\ Multiple-choice box \
+#computer_1:
+*: Write text adventure
+ | This is the end of the demo.
+   
+   Go ahead and write your own adventure now. Have fun!
+   @leave() @end()
+*: Shutdown
+ | @leave() \ leave choice box \
+
+$keyboard_inv-computer(useon): @choicebox(computer_1)
